@@ -63,6 +63,21 @@ Django ARMS is a full-featured **Airline Reservation Management System** designe
 | **Security** | Django Auth, CAPTCHA, Cryptography |
 | **Additional** | Pillow (Image Processing), QR Code Generation |
 
+## 🏗️ Project Structure
+django_arms/
+├── armsApp/                    # Main application
+│   ├── models/                 # Database models
+│   ├── views/                  # View controllers
+│   ├── templates/              # HTML templates
+│   ├── static/                 # CSS, JS, Images
+│   ├── management/commands/    # Custom Django commands
+│   └── migrations/             # Database migrations
+├── django_arms/                # Project settings
+├── media/                      # User uploads
+├── static/                     # Static files
+└── requirements.txt            # Dependencies
+
+
 ## 🚀 Quick Start
 
 ### Prerequisites
