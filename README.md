@@ -69,6 +69,10 @@ Django ARMS is a full-featured **Airline Reservation Management System** designe
 - Python 3.8 or higher
 - pip (Python package manager)
 - Git
+- Django
+- SQL lyt
+- Frontend(HTML,CS,JS)
+- 
 
 ### Installation
 
