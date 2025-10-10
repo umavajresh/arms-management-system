@@ -1,0 +1,21 @@
+code,model,manufacturer,business_capacity,economy_capacity
+B738,Boeing 737-800,Boeing,12,162
+B77W,Boeing 777-300ER,Boeing,42,304
+B788,Boeing 787-8 Dreamliner,Boeing,28,214
+B789,Boeing 787-9 Dreamliner,Boeing,30,252
+A320,Airbus A320-200,Airbus,12,168
+A21N,Airbus A321neo,Airbus,16,178
+A359,Airbus A350-900,Airbus,40,265
+A388,Airbus A380-800,Airbus,76,399
+E190,Embraer E190,Embraer,8,96
+E170,Embraer E170,Embraer,6,70
+AT72,ATR 72-600,ATR,0,68
+DH8D,Bombardier Q400,Bombardier,0,78
+B744,Boeing 747-400,Boeing,58,262
+B748,Boeing 747-8,Boeing,66,308
+A333,Airbus A330-300,Airbus,34,256
+A339,Airbus A330-900neo,Airbus,34,268
+A35K,Airbus A350-1000,Airbus,46,315
+B739,Boeing 737-900ER,Boeing,16,162
+B77L,Boeing 777-200LR,Boeing,38,230
+A319,Airbus A319,Airbus,8,120

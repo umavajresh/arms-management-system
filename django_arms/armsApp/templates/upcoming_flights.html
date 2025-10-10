@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block pageContent %}
+<style>
+    .filter-form {
+        margin: 20px 0;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .flights-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .flights-table th, .flights-table td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .flights-table th {
+        background-color: #f2f2f2;
+    }
+    
+    .flights-table tr:hover {
+        background-color: #f5f5f5;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 3px 7px;
+        border-radius: 10px;
+        font-size: 12px;
+    }
+    
+    .badge-success {
+        background-color: #28a745;
+        color: white;
+    }
+    
+    .badge-warning {
+        background-color: #ffc107;
+        color: black;
+    }
+    
+    .badge-danger {
+        background-color: #dc3545;
+        color: white;
+    }
+</style>
+
+<div class="container py-5">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Upcoming Flights ({{ start_date|date:"Y-m-d" }} to {{ end_date|date:"Y-m-d" }})</h3>
+        </div>
+        <div class="card-body">
+            <!-- Filter Form -->
+            <div class="filter-form">
+                <form method="get">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <label for="date">Starting Date:</label>
+                            <input type="date" name="date" id="date" class="form-control" value="{{ selected_date }}" onchange="this.form.submit()">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label for="days">Days ahead:</label>
+                            <select name="days" id="days" class="form-control" onchange="this.form.submit()">
+                                {% for day_option in days_options %}
+                                    <option value="{{ day_option }}" {% if day_option == days %}selected{% endif %}>{{ day_option }} days</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2 mb-2">
+                            <label for="airline">Airline:</label>
+                            <select name="airline" id="airline" class="form-control" onchange="this.form.submit()">
+                                <option value="">All Airlines</option>
+                                {% for airline in airlines %}
+                                    <option value="{{ airline.id }}" {% if selected_airline == airline.id|stringformat:"s" %}selected{% endif %}>{{ airline.code }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2 mb-2">
+                            <label for="from_airport">From:</label>
+                            <select name="from_airport" id="from_airport" class="form-control" onchange="this.form.submit()">
+                                <option value="">Any Airport</option>
+                                {% for airport in airports %}
+                                    <option value="{{ airport.code }}" {% if selected_from_airport == airport.code %}selected{% endif %}>{{ airport.code }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2 mb-2">
+                            <label for="to_airport">To:</label>
+                            <select name="to_airport" id="to_airport" class="form-control" onchange="this.form.submit()">
+                                <option value="">Any Airport</option>
+                                {% for airport in airports %}
+                                    <option value="{{ airport.code }}" {% if selected_to_airport == airport.code %}selected{% endif %}>{{ airport.code }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-1 mb-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">Filter</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Flights Table -->
+            {% if flights %}
+                <div class="table-responsive">
+                    <table class="flights-table">
+                        <thead>
+                            <tr>
+                                <th>Flight Code</th>
+                                <th>Airline</th>
+                                <th>Route</th>
+                                <th>Departure</th>
+                                <th>Arrival</th>
+                                <th>Economy</th>
+                                <th>Business</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for flight in flights %}
+                            <tr>
+                                <td>{{ flight.code }}</td>
+                                <td>{{ flight.airline.name }}</td>
+                                <td>{{ flight.from_airport.code }} → {{ flight.to_airport.code }}</td>
+                                <td>{{ flight.departure|date:"Y-m-d H:i" }}</td>
+                                <td>{{ flight.estimated_arrival|date:"Y-m-d H:i" }}</td>
+                                <td>
+                                    {% with available_economy=flight.e_slot %}
+                                        {% if available_economy <= 0 %}
+                                            <span class="badge badge-danger">Full</span>
+                                        {% elif available_economy <= 5 %}
+                                            <span class="badge badge-warning">{{ available_economy }} left</span>
+                                        {% else %}
+                                            <span class="badge badge-success">{{ available_economy }} available</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </td>
+                                <td>
+                                    {% with available_business=flight.b_slot %}
+                                        {% if available_business <= 0 %}
+                                            <span class="badge badge-danger">Full</span>
+                                        {% elif available_business <= 3 %}
+                                            <span class="badge badge-warning">{{ available_business }} left</span>
+                                        {% else %}
+                                            <span class="badge badge-success">{{ available_business }} available</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'reserve-form' flight.id %}" class="btn btn-sm btn-primary">Book Now</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <div class="mt-3">
+                        <p>Showing {{ flights|length }} flights</p>
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-info">No upcoming flights found for the selected criteria.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock pageContent %}

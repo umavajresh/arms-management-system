@@ -1,0 +1,22 @@
+{% extends "admin/index.html" %}
+{% load i18n %}
+
+{% block content %}
+    {{ block.super }}
+    
+    <div class="module" style="margin-top: 20px;">
+        <h2>ARMS Quick Links</h2>
+        <ul>
+            <li>
+                <a href="/admin/upcoming-flights/">
+                    <i class="fas fa-plane"></i> View Upcoming Flights Dashboard
+                </a>
+            </li>
+            <li>
+                <a href="/admin/reservation-approval/">
+                    <i class="fas fa-clipboard-check"></i> Reservation Approval Management
+                </a>
+            </li>
+        </ul>
+    </div>
+{% endblock %}

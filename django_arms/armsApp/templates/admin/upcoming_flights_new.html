@@ -1,0 +1,441 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'assets/bootstrap/css/bootstrap.min.css' %}">
+<style type="text/css">
+    .filter-form {
+        margin: 20px 0;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .flights-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .flights-table th, .flights-table td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .flights-table th {
+        background-color: #f2f2f2;
+    }
+    
+    .flights-table tr:hover {
+        background-color: #f5f5f5;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 3px 7px;
+        border-radius: 10px;
+        font-size: 12px;
+    }
+    
+    .badge-success {
+        background-color: #28a745;
+        color: white;
+    }
+    
+    .badge-warning {
+        background-color: #ffc107;
+        color: black;
+    }
+    
+    .badge-danger {
+        background-color: #dc3545;
+        color: white;
+    }
+    
+    .badge-info {
+        background-color: #17a2b8;
+        color: white;
+    }
+    
+    .progress {
+        height: 15px;
+        margin-bottom: 0;
+    }
+    
+    .sortable-header {
+        cursor: pointer;
+    }
+    
+    .sortable-header:hover {
+        background-color: #e9ecef;
+    }
+    
+    .stats-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .stat-card {
+        flex: 1;
+        min-width: 200px;
+        padding: 15px;
+        border-radius: 5px;
+        background-color: #f8f9fa;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .custom-tabs {
+        display: flex;
+        list-style: none;
+        padding: 0;
+        margin: 0 0 20px 0;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .custom-tabs li {
+        margin-bottom: -1px;
+    }
+    
+    .custom-tabs a {
+        display: block;
+        padding: 0.5rem 1rem;
+        border: 1px solid transparent;
+        border-top-left-radius: 0.25rem;
+        border-top-right-radius: 0.25rem;
+        text-decoration: none;
+        color: #495057;
+    }
+    
+    .custom-tabs a:hover {
+        border-color: #e9ecef #e9ecef #dee2e6;
+    }
+    
+    .custom-tabs a.active {
+        color: #495057;
+        background-color: #fff;
+        border-color: #dee2e6 #dee2e6 #fff;
+    }
+    
+    .tab-content > div {
+        display: none;
+    }
+    
+    .tab-content > div.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+    &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>{{ title }}</h1>
+    
+    <!-- Filter Form -->
+    <div class="filter-form">
+        <form method="get" class="row g-3">
+            <div class="col-md-2">
+                <label for="days" class="form-label">Next</label>
+                <select name="days" id="days" class="form-control">
+                    {% for day_option in days_options %}
+                    <option value="{{ day_option }}" {% if days == day_option %}selected{% endif %}>{{ day_option }} day{{ day_option|pluralize }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label for="date_from" class="form-label">From Date</label>
+                <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
+            </div>
+            
+            <div class="col-md-2">
+                <label for="date_to" class="form-label">To Date</label>
+                <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
+            </div>
+            
+            <div class="col-md-2">
+                <label for="airline" class="form-label">Airline</label>
+                <select name="airline" id="airline" class="form-control">
+                    <option value="">All Airlines</option>
+                    {% for airline in airlines %}
+                    <option value="{{ airline.id }}" {% if selected_airline == airline.id|stringformat:"s" %}selected{% endif %}>{{ airline.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label for="airport" class="form-label">Airport</label>
+                <select name="airport" id="airport" class="form-control">
+                    <option value="">All Airports</option>
+                    {% for airport in airports %}
+                    <option value="{{ airport.id }}" {% if selected_airport == airport.id|stringformat:"s" %}selected{% endif %}>{{ airport.code }} - {{ airport.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label for="aircraft" class="form-label">Aircraft</label>
+                <select name="aircraft" id="aircraft" class="form-control">
+                    <option value="">All Aircraft</option>
+                    {% for plane in aircraft %}
+                    <option value="{{ plane.id }}" {% if selected_aircraft == plane.id|stringformat:"s" %}selected{% endif %}>{{ plane.code }} - {{ plane.model }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label for="status" class="form-label">Status</label>
+                <select name="status" id="status" class="form-control">
+                    <option value="">All Statuses</option>
+                    <option value="1" {% if selected_status == "1" %}selected{% endif %}>Active</option>
+                    <option value="2" {% if selected_status == "2" %}selected{% endif %}>Cancelled</option>
+                    <option value="3" {% if selected_status == "3" %}selected{% endif %}>Completed</option>
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label for="sort" class="form-label">Sort By</label>
+                <select name="sort" id="sort" class="form-control">
+                    <option value="departure" {% if sort_by == "departure" %}selected{% endif %}>Departure Time</option>
+                    <option value="code" {% if sort_by == "code" %}selected{% endif %}>Flight Code</option>
+                    <option value="airline" {% if sort_by == "airline" %}selected{% endif %}>Airline</option>
+                    <option value="from_airport" {% if sort_by == "from_airport" %}selected{% endif %}>From Airport</option>
+                    <option value="to_airport" {% if sort_by == "to_airport" %}selected{% endif %}>To Airport</option>
+                    <option value="occupancy" {% if sort_by == "occupancy" %}selected{% endif %}>Occupancy</option>
+                    <option value="reservation_count" {% if sort_by == "reservation_count" %}selected{% endif %}>Reservations</option>
+                </select>
+            </div>
+            
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">Apply Filters</button>
+            </div>
+            
+            <div class="col-md-2 d-flex align-items-end">
+                <a href="{% url 'admin:upcoming-flights' %}" class="btn btn-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Date Range Info -->
+    <div class="alert alert-info">
+        <p>Showing flights from {{ today|date:"M d, Y" }} to {{ end_date|date:"M d, Y" }}</p>
+    </div>
+    
+    <!-- Custom Tabs -->
+    <ul class="custom-tabs" id="flightTabs">
+        <li><a href="#flights-tab" class="active">Upcoming Flights</a></li>
+        <li><a href="#schedules-tab">Recurring Flight Schedules</a></li>
+    </ul>
+    
+    <div class="tab-content">
+        <!-- Flights Tab Content -->
+        <div id="flights-tab" class="active">
+            <div class="stats-container">
+                <div class="stat-card">
+                    <h4>Total Flights</h4>
+                    <h2>{{ flights|length }}</h2>
+                </div>
+                
+                <div class="stat-card">
+                    <h4>Active Flights</h4>
+                    <h2>{{ flights|dictsortbykey:"status"|dictsort:"1"|length }}</h2>
+                </div>
+                
+                <div class="stat-card">
+                    <h4>Cancelled</h4>
+                    <h2>{{ flights|dictsortbykey:"status"|dictsort:"2"|length }}</h2>
+                </div>
+            </div>
+            
+            {% if flights %}
+            <table class="flights-table">
+                <thead>
+                    <tr>
+                        <th class="sortable-header" data-sort="code">Flight Code</th>
+                        <th class="sortable-header" data-sort="airline">Airline</th>
+                        <th class="sortable-header" data-sort="aircraft">Aircraft</th>
+                        <th class="sortable-header" data-sort="from_airport">From</th>
+                        <th class="sortable-header" data-sort="to_airport">To</th>
+                        <th class="sortable-header" data-sort="departure">Departure</th>
+                        <th class="sortable-header" data-sort="arrival">Arrival</th>
+                        <th>Status</th>
+                        <th>Economy Seats</th>
+                        <th>Business Seats</th>
+                        <th class="sortable-header" data-sort="occupancy">Occupancy</th>
+                        <th class="sortable-header" data-sort="reservation_count">Reservations</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for flight in flights %}
+                    <tr>
+                        <td>{{ flight.code }}</td>
+                        <td>{{ flight.airline.name }}</td>
+                        <td>{{ flight.aircraft.model }}</td>
+                        <td>{{ flight.from_airport.code }}</td>
+                        <td>{{ flight.to_airport.code }}</td>
+                        <td>{{ flight.departure|date:"M d, Y H:i" }}</td>
+                        <td>{{ flight.arrival|date:"M d, Y H:i" }}</td>
+                        <td>
+                            {% if flight.status == '1' %}
+                            <span class="badge badge-success">Active</span>
+                            {% elif flight.status == '2' %}
+                            <span class="badge badge-danger">Cancelled</span>
+                            {% elif flight.status == '3' %}
+                            <span class="badge badge-info">Completed</span>
+                            {% else %}
+                            <span class="badge badge-secondary">Unknown</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ flight.economy_occupancy }}%;" 
+                                     aria-valuenow="{{ flight.economy_occupancy }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <small>{{ flight.booked_economy }}/{{ flight.economy_slots }} ({{ flight.economy_occupancy|floatformat:1 }}%)</small>
+                        </td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ flight.business_occupancy }}%;" 
+                                     aria-valuenow="{{ flight.business_occupancy }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <small>{{ flight.booked_business }}/{{ flight.business_class_slots }} ({{ flight.business_occupancy|floatformat:1 }}%)</small>
+                        </td>
+                        <td>
+                            <div class="progress">
+                                {% if flight.overall_occupancy < 50 %}
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ flight.overall_occupancy }}%;" 
+                                     aria-valuenow="{{ flight.overall_occupancy }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                {% elif flight.overall_occupancy < 80 %}
+                                <div class="progress-bar bg-warning" role="progressbar" style="width: {{ flight.overall_occupancy }}%;" 
+                                     aria-valuenow="{{ flight.overall_occupancy }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                {% else %}
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ flight.overall_occupancy }}%;" 
+                                     aria-valuenow="{{ flight.overall_occupancy }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                {% endif %}
+                            </div>
+                            <small>{{ flight.overall_occupancy|floatformat:1 }}%</small>
+                        </td>
+                        <td>{{ flight.reservation_count }}</td>
+                        <td>
+                            <a href="{% url 'admin:armsApp_flights_change' flight.id %}" class="btn btn-sm btn-primary">Edit</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="alert alert-info">
+                <p>No flights found for the selected criteria.</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Schedules Tab Content -->
+        <div id="schedules-tab">
+            <h2>Recurring Flight Schedules</h2>
+            {% if schedules %}
+            <table class="flights-table">
+                <thead>
+                    <tr>
+                        <th>Flight Code</th>
+                        <th>Airline</th>
+                        <th>Aircraft</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Days</th>
+                        <th>Departure</th>
+                        <th>Status</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for schedule in schedules %}
+                    <tr>
+                        <td>{{ schedule.code }}</td>
+                        <td>{{ schedule.airline.name }}</td>
+                        <td>{{ schedule.aircraft.model }}</td>
+                        <td>{{ schedule.from_airport.code }}</td>
+                        <td>{{ schedule.to_airport.code }}</td>
+                        <td>
+                            {% if schedule.monday %}<span class="badge badge-info">Mon</span>{% endif %}
+                            {% if schedule.tuesday %}<span class="badge badge-info">Tue</span>{% endif %}
+                            {% if schedule.wednesday %}<span class="badge badge-info">Wed</span>{% endif %}
+                            {% if schedule.thursday %}<span class="badge badge-info">Thu</span>{% endif %}
+                            {% if schedule.friday %}<span class="badge badge-info">Fri</span>{% endif %}
+                            {% if schedule.saturday %}<span class="badge badge-info">Sat</span>{% endif %}
+                            {% if schedule.sunday %}<span class="badge badge-info">Sun</span>{% endif %}
+                        </td>
+                        <td>{{ schedule.departure_time }}</td>
+                        <td>
+                            {% if schedule.is_active %}
+                            <span class="badge badge-success">Active</span>
+                            {% else %}
+                            <span class="badge badge-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ schedule.start_date|date:"M d, Y" }}</td>
+                        <td>{{ schedule.end_date|date:"M d, Y" }}</td>
+                        <td>
+                            <a href="{% url 'admin:armsApp_flightschedule_change' schedule.id %}" class="btn btn-sm btn-primary">Edit</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="alert alert-info">
+                <p>No active flight schedules found.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Custom tab implementation
+    const tabLinks = document.querySelectorAll('#flightTabs a');
+    const tabContents = document.querySelectorAll('.tab-content > div');
+    
+    tabLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Deactivate all tabs
+            tabLinks.forEach(tab => tab.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Activate the clicked tab
+            this.classList.add('active');
+            const targetId = this.getAttribute('href').substring(1);
+            document.getElementById(targetId).classList.add('active');
+        });
+    });
+    
+    // Sortable headers
+    const sortableHeaders = document.querySelectorAll('.sortable-header');
+    sortableHeaders.forEach(header => {
+        header.addEventListener('click', function() {
+            const sortBy = this.getAttribute('data-sort');
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('sort', sortBy);
+            window.location.href = currentUrl.toString();
+        });
+    });
+});
+</script>
+{% endblock %}

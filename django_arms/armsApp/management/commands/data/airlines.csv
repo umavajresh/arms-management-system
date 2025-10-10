@@ -1,0 +1,21 @@
+code,name,country,status
+AIC,Air India,India,1
+BAW,British Airways,United Kingdom,1
+DLH,Lufthansa,Germany,1
+SIA,Singapore Airlines,Singapore,1
+UAE,Emirates,United Arab Emirates,1
+QTR,Qatar Airways,Qatar,1
+SVA,Saudi Arabian Airlines,Saudi Arabia,1
+THY,Turkish Airlines,Turkey,1
+UAL,United Airlines,United States,1
+AAL,American Airlines,United States,1
+DAL,Delta Air Lines,United States,1
+CPA,Cathay Pacific,Hong Kong,1
+JTR,Japan Airlines,Japan,1
+KAL,Korean Air,South Korea,1
+AFR,Air France,France,1
+KLM,KLM Royal Dutch Airlines,Netherlands,1
+SWR,Swiss International Air Lines,Switzerland,1
+ETH,Ethiopian Airlines,Ethiopia,1
+QFA,Qantas,Australia,1
+AXM,AirAsia,Malaysia,1

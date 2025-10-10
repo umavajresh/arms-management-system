@@ -1,0 +1,345 @@
+{% extends 'base.html' %} 
+{% load static %} 
+{% load i18n %}
+
+{% block pageContent %}
+<section class="py-4">
+    <div class="container">
+        <h3 class="fw-bolder text-center">Upcoming Flights</h3>
+        <center>
+            <hr class="bg-primary opacity-100" style="height:3px" width="5%">
+        </center>
+        
+        <!-- Filter Form -->
+        <div class="card rounded-0 shadow mb-4">
+            <div class="card-header bg-gradient-primary text-light">
+                <h5 class="card-title">Filter Options</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-2">
+                        <label for="days" class="form-label">Next</label>
+                        <select name="days" id="days" class="form-select rounded-0">
+                            {% for day_option in days_options %}
+                            <option value="{{ day_option }}" {% if days == day_option %}selected{% endif %}>{{ day_option }} day{{ day_option|pluralize }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label for="date_from" class="form-label">From Date</label>
+                        <input type="date" name="date_from" id="date_from" class="form-control rounded-0" value="{{ date_from }}">
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label for="date_to" class="form-label">To Date</label>
+                        <input type="date" name="date_to" id="date_to" class="form-control rounded-0" value="{{ date_to }}">
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label for="airline" class="form-label">Airline</label>
+                        <select name="airline" id="airline" class="form-select rounded-0">
+                            <option value="">All Airlines</option>
+                            {% for airline in airlines %}
+                            <option value="{{ airline.id }}" {% if selected_airline == airline.id|stringformat:"s" %}selected{% endif %}>{{ airline.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label for="airport" class="form-label">Airport</label>
+                        <select name="airport" id="airport" class="form-select rounded-0">
+                            <option value="">All Airports</option>
+                            {% for airport in airports %}
+                            <option value="{{ airport.id }}" {% if selected_airport == airport.id|stringformat:"s" %}selected{% endif %}>{{ airport.code }} - {{ airport.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label for="aircraft" class="form-label">Aircraft</label>
+                        <select name="aircraft" id="aircraft" class="form-select rounded-0">
+                            <option value="">All Aircraft</option>
+                            {% for plane in aircraft %}
+                            <option value="{{ plane.id }}" {% if selected_aircraft == plane.id|stringformat:"s" %}selected{% endif %}>{{ plane.code }} - {{ plane.model }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label for="status" class="form-label">Status</label>
+                        <select name="status" id="status" class="form-select rounded-0">
+                            <option value="">All Statuses</option>
+                            <option value="1" {% if selected_status == "1" %}selected{% endif %}>Active</option>
+                            <option value="2" {% if selected_status == "2" %}selected{% endif %}>Cancelled</option>
+                            <option value="3" {% if selected_status == "3" %}selected{% endif %}>Completed</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label for="sort" class="form-label">Sort By</label>
+                        <select name="sort" id="sort" class="form-select rounded-0">
+                            <option value="departure" {% if sort_by == "departure" %}selected{% endif %}>Departure Time</option>
+                            <option value="code" {% if sort_by == "code" %}selected{% endif %}>Flight Code</option>
+                            <option value="airline" {% if sort_by == "airline" %}selected{% endif %}>Airline</option>
+                            <option value="from_airport" {% if sort_by == "from_airport" %}selected{% endif %}>From Airport</option>
+                            <option value="to_airport" {% if sort_by == "to_airport" %}selected{% endif %}>To Airport</option>
+                            <option value="occupancy" {% if sort_by == "occupancy" %}selected{% endif %}>Occupancy</option>
+                            <option value="reservation_count" {% if sort_by == "reservation_count" %}selected{% endif %}>Reservations</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-primary rounded-0 bg-gradient-primary">Apply Filters</button>
+                        <a href="/admin/upcoming-flights/" class="btn btn-light rounded-0 border">Reset</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Date Range Info -->
+        <div class="alert alert-info rounded-0">
+            <p class="m-0">Showing flights from {{ today|date:"M d, Y" }} to {{ end_date|date:"M d, Y" }}</p>
+        </div>
+        
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs nav-fill" id="flightTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="flights-tab" data-bs-toggle="tab" data-bs-target="#flights-content" type="button" role="tab" aria-controls="flights-content" aria-selected="true">
+                    <i class="fa fa-plane-departure me-2"></i>Upcoming Flights
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="schedules-tab" data-bs-toggle="tab" data-bs-target="#schedules-content" type="button" role="tab" aria-controls="schedules-content" aria-selected="false">
+                    <i class="fa fa-calendar-alt me-2"></i>Recurring Flight Schedules
+                </button>
+            </li>
+        </ul>
+        
+        <!-- Tab content -->
+        <div class="tab-content" id="flightTabsContent">
+            <!-- Flights Tab Content -->
+            <div class="tab-pane fade show active" id="flights-content" role="tabpanel" aria-labelledby="flights-tab">
+                <!-- Statistics Cards -->
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <div class="card rounded-0 shadow">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Flights</h5>
+                                <h1 class="display-4 fw-bold text-center">{{ flights|length }}</h1>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card rounded-0 shadow">
+                            <div class="card-body">
+                                <h5 class="card-title">Active Flights</h5>
+                                <h1 class="display-4 fw-bold text-center">
+                                {% with active_flights=flights|length %}
+                                    {% for flight in flights %}
+                                        {% if flight.status == '1' %}{% with active_flights=active_flights|add:-1 %}{% endwith %}{% endif %}
+                                    {% endfor %}
+                                    {{ active_flights }}
+                                {% endwith %}
+                                </h1>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card rounded-0 shadow">
+                            <div class="card-body">
+                                <h5 class="card-title">Cancelled Flights</h5>
+                                <h1 class="display-4 fw-bold text-center">
+                                {% with cancelled_flights=0 %}
+                                    {% for flight in flights %}
+                                        {% if flight.status == '2' %}{% with cancelled_flights=cancelled_flights|add:1 %}{% endwith %}{% endif %}
+                                    {% endfor %}
+                                    {{ cancelled_flights }}
+                                {% endwith %}
+                                </h1>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Flights Table -->
+                <div class="card rounded-0 shadow mt-3">
+                    <div class="card-body">
+                        {% if flights %}
+                        <table class="table table-bordered table-striped" id="flights-table">
+                            <thead>
+                                <tr>
+                                    <th class="text-center">Flight Code</th>
+                                    <th class="text-center">Airline</th>
+                                    <th class="text-center">Aircraft</th>
+                                    <th class="text-center">From</th>
+                                    <th class="text-center">To</th>
+                                    <th class="text-center">Departure</th>
+                                    <th class="text-center">Arrival</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-center">Economy</th>
+                                    <th class="text-center">Business</th>
+                                    <th class="text-center">Occupancy</th>
+                                    <th class="text-center">Reservations</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for flight in flights %}
+                                <tr>
+                                    <td>{{ flight.code }}</td>
+                                    <td>{{ flight.airline.name }}</td>
+                                    <td>{{ flight.aircraft.model }}</td>
+                                    <td>{{ flight.from_airport.code }}</td>
+                                    <td>{{ flight.to_airport.code }}</td>
+                                    <td>{{ flight.departure|date:"M d, Y H:i" }}</td>
+                                    <td>{{ flight.arrival|date:"M d, Y H:i" }}</td>
+                                    <td class="text-center">
+                                        {% if flight.status == '1' %}
+                                        <span class="badge bg-success rounded-pill">Active</span>
+                                        {% elif flight.status == '2' %}
+                                        <span class="badge bg-danger rounded-pill">Cancelled</span>
+                                        {% elif flight.status == '3' %}
+                                        <span class="badge bg-info rounded-pill">Completed</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary rounded-pill">Unknown</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ flight.economy_occupancy }}%;" 
+                                                 aria-valuenow="{{ flight.economy_occupancy }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <small>{{ flight.booked_economy }}/{{ flight.economy_slots }} ({{ flight.economy_occupancy|floatformat:1 }}%)</small>
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ flight.business_occupancy }}%;" 
+                                                 aria-valuenow="{{ flight.business_occupancy }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <small>{{ flight.booked_business }}/{{ flight.business_class_slots }} ({{ flight.business_occupancy|floatformat:1 }}%)</small>
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            {% if flight.overall_occupancy < 50 %}
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ flight.overall_occupancy }}%;" 
+                                                 aria-valuenow="{{ flight.overall_occupancy }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                            {% elif flight.overall_occupancy < 80 %}
+                                            <div class="progress-bar bg-warning" role="progressbar" style="width: {{ flight.overall_occupancy }}%;" 
+                                                 aria-valuenow="{{ flight.overall_occupancy }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                            {% else %}
+                                            <div class="progress-bar bg-danger" role="progressbar" style="width: {{ flight.overall_occupancy }}%;" 
+                                                 aria-valuenow="{{ flight.overall_occupancy }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                            {% endif %}
+                                        </div>
+                                        <small>{{ flight.overall_occupancy|floatformat:1 }}%</small>
+                                    </td>
+                                    <td class="text-center">{{ flight.reservation_count }}</td>
+                                    <td class="text-center">
+                                        <a href="/admin/armsApp/flights/{{ flight.id }}/change/" class="btn btn-sm btn-primary rounded-0 bg-gradient-primary">
+                                            <i class="fa fa-edit"></i> Edit
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <div class="alert alert-info rounded-0">
+                            <p class="m-0">No flights found for the selected criteria.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Schedules Tab Content -->
+            <div class="tab-pane fade" id="schedules-content" role="tabpanel" aria-labelledby="schedules-tab">
+                <div class="card rounded-0 shadow mt-3">
+                    <div class="card-header bg-gradient-primary text-light">
+                        <h5 class="card-title">Recurring Flight Schedules</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if schedules %}
+                        <table class="table table-bordered table-striped" id="schedules-table">
+                            <thead>
+                                <tr>
+                                    <th class="text-center">Flight Code</th>
+                                    <th class="text-center">Airline</th>
+                                    <th class="text-center">Aircraft</th>
+                                    <th class="text-center">From</th>
+                                    <th class="text-center">To</th>
+                                    <th class="text-center">Days</th>
+                                    <th class="text-center">Departure</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-center">Start Date</th>
+                                    <th class="text-center">End Date</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for schedule in schedules %}
+                                <tr>
+                                    <td>{{ schedule.code }}</td>
+                                    <td>{{ schedule.airline.name }}</td>
+                                    <td>{{ schedule.aircraft.model }}</td>
+                                    <td>{{ schedule.from_airport.code }}</td>
+                                    <td>{{ schedule.to_airport.code }}</td>
+                                    <td class="text-center">
+                                        {% if schedule.monday %}<span class="badge bg-info rounded-pill">Mon</span>{% endif %}
+                                        {% if schedule.tuesday %}<span class="badge bg-info rounded-pill">Tue</span>{% endif %}
+                                        {% if schedule.wednesday %}<span class="badge bg-info rounded-pill">Wed</span>{% endif %}
+                                        {% if schedule.thursday %}<span class="badge bg-info rounded-pill">Thu</span>{% endif %}
+                                        {% if schedule.friday %}<span class="badge bg-info rounded-pill">Fri</span>{% endif %}
+                                        {% if schedule.saturday %}<span class="badge bg-info rounded-pill">Sat</span>{% endif %}
+                                        {% if schedule.sunday %}<span class="badge bg-info rounded-pill">Sun</span>{% endif %}
+                                    </td>
+                                    <td>{{ schedule.departure_time }}</td>
+                                    <td class="text-center">
+                                        {% if schedule.is_active %}
+                                        <span class="badge bg-success rounded-pill">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-danger rounded-pill">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ schedule.start_date|date:"M d, Y" }}</td>
+                                    <td>{{ schedule.end_date|date:"M d, Y" }}</td>
+                                    <td class="text-center">
+                                        <a href="/admin/armsApp/flightschedule/{{ schedule.id }}/change/" class="btn btn-sm btn-primary rounded-0 bg-gradient-primary">
+                                            <i class="fa fa-edit"></i> Edit
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <div class="alert alert-info rounded-0">
+                            <p class="m-0">No active flight schedules found.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block ScriptBlock %}
+<script>
+$(document).ready(function() {
+    $('#flights-table, #schedules-table').DataTable({
+        "responsive": true,
+        "ordering": false,
+        "paging": true,
+        "searching": true,
+        "info": true,
+        "autoWidth": false,
+        "language": {
+            "emptyTable": "No data available in table"
+        }
+    });
+});
+</script>
+{% endblock %}

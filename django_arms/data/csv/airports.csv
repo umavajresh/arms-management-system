@@ -1,0 +1,21 @@
+code,name,city,country,status
+JFK,John F. Kennedy International Airport,New York,United States,1
+LAX,Los Angeles International Airport,Los Angeles,United States,1
+ORD,O'Hare International Airport,Chicago,United States,1
+LHR,Heathrow Airport,London,United Kingdom,1
+CDG,Charles de Gaulle Airport,Paris,France,1
+FRA,Frankfurt Airport,Frankfurt,Germany,1
+DXB,Dubai International Airport,Dubai,United Arab Emirates,1
+HND,Haneda Airport,Tokyo,Japan,1
+PVG,Shanghai Pudong International Airport,Shanghai,China,1
+SIN,Singapore Changi Airport,Singapore,Singapore,1
+DEL,Indira Gandhi International Airport,Delhi,India,1
+BOM,Chhatrapati Shivaji Maharaj International Airport,Mumbai,India,1
+SYD,Sydney Airport,Sydney,Australia,1
+GRU,São Paulo-Guarulhos International Airport,São Paulo,Brazil,1
+IST,Istanbul Airport,Istanbul,Turkey,1
+AMS,Amsterdam Airport Schiphol,Amsterdam,Netherlands,1
+MAD,Adolfo Suárez Madrid–Barajas Airport,Madrid,Spain,1
+BCN,Barcelona–El Prat Airport,Barcelona,Spain,1
+MEX,Mexico City International Airport,Mexico City,Mexico,1
+YYZ,Toronto Pearson International Airport,Toronto,Canada,1

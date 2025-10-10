@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block pageContent %}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white text-center">
+                    <h1>Welcome to Airline Reservation Management System</h1>
+                    <p class="mb-0">Please choose how you would like to continue</p>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 border-0 shadow">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-user-shield fa-5x mb-3 text-primary"></i>
+                                    <h3>Admin</h3>
+                                    <p>Login to manage airlines, airports, flights, and reservations</p>
+                                    <a href="{% url 'login-page' %}?type=admin" class="btn btn-primary btn-lg w-100">
+                                        Enter as Admin
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 border-0 shadow">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-user fa-5x mb-3 text-success"></i>
+                                    <h3>User</h3>
+                                    <p>Search flights, make reservations, and manage your bookings</p>
+                                    <a href="{% url 'login-page' %}?type=user" class="btn btn-success btn-lg w-100">
+                                        Enter as User
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    <p>Don't have an account? <a href="{% url 'register-page' %}">Register here</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock pageContent %}

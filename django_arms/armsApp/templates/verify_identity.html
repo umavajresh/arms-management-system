@@ -1,0 +1,75 @@
+{% extends 'base.html' %}{% load static %}{% block pageContent %}
+<style>
+    body{
+        background-image:url('{% static "assets/default/img/wallpaper.jpg" %}');
+        background-repeat:no-repeat;
+        background-size:cover;
+    }
+    main {
+        height: 100%;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: auto;
+    }
+</style>
+<div class="d-flex flex-column w-100 justify-content-center align-items-center">
+    <div class="col-lg-4 col-md-6 col-sm-12 col-xs-12">
+        <div class="card card-default rounded-0 shadow">
+            <div class="card-header">
+                <h4 class="card-title"><b>Verify Your Identity</b></h4>
+            </div>
+            <div class="card-body">
+                <div class="container-fluid">
+                    <form id="verify-identity-form" action="{% url 'answer-security-question' %}" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                        
+                        <div class="mdc-layout-grid">
+                            <div class="mdc-layout-grid__inner">
+                                <p class="mb-3">To verify your identity, please answer the following security question:</p>
+                                
+                                <div class="form-group mb-3">
+                                    <label class="control-label fw-bold">Security Question:</label>
+                                    <p>{{ security_question_text }}</p>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="date_of_birth" class="control-label">Date of Birth</label>
+                                    <input type="date" class="form-control rounded-0" name="date_of_birth" id="date_of_birth" required="required">
+                                    <small class="form-text text-muted">Please enter your date of birth as MM/DD/YYYY</small>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="security_answer" class="control-label">Your Answer</label>
+                                    <input type="text" class="form-control rounded-0" name="security_answer" id="security_answer" required="required">
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <div class="d-flex w-100 justify-content-between align-items-center">
+                                        <a href="{% url 'forgot-password' %}">Back</a>
+                                        <button type="submit" class="btn btn-sm rounded-0 btn-primary">
+                                            Verify
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                {% if messages %}
+                                <div class="form-group mb-3">
+                                    {% for message in messages %}
+                                    <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %} mb-0">
+                                        {{ message }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock pageContent %}

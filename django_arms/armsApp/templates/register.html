@@ -1,0 +1,364 @@
+{% extends 'base.html' %}{% load static %}{% block pageContent %}
+<style>
+    body{
+        background-image:url('{% static "assets/default/img/wallpaper.jpg" %}');
+        background-repeat:no-repeat;
+        background-size:cover;
+    }
+    main {
+        min-height: 100vh;
+        width: 100%;
+        padding-top: 80px; /* Account for fixed navbar */
+        padding-bottom: 2rem;
+        overflow-y: auto;
+    }
+    .registration-container {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: calc(100vh - 100px); /* Account for navbar and padding */
+        padding: 1rem 0;
+    }
+    .card-registration {
+        max-height: none;
+        overflow-y: visible;
+        margin: 1rem 0;
+    }
+    .card-body {
+        max-height: none;
+        overflow-y: auto;
+    }
+    
+    /* Ensure form fields are properly spaced and visible */
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    /* Fix for small screens */
+    @media (max-width: 768px) {
+        main {
+            padding-top: 60px; /* Smaller padding on mobile */
+        }
+        .registration-container {
+            padding: 0.5rem;
+            min-height: calc(100vh - 80px);
+        }
+        .col-lg-5, .col-md-6 {
+            padding: 0 0.5rem;
+        }
+        .card-registration {
+            margin: 0.5rem 0;
+        }
+    }
+    
+    /* Ensure the card doesn't get cut off */
+    .card-registration {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* Ensure scrolling works on all browsers */
+    html {
+        scroll-behavior: smooth;
+    }
+    
+    body {
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+</style>
+<div class="registration-container">
+    <div class="row justify-content-center w-100">
+        <div class="col-lg-5 col-md-6 col-sm-12 col-xs-12">
+            <div class="card card-default rounded-0 shadow card-registration">
+                <div class="card-header">
+                    <h4 class="card-title"><b>Create New User</b></h4>
+                </div>
+                <div class="card-body">
+                <div class="container-fluid">
+                    <form id="register-user" method="POST" action="" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mdc-layout-grid">
+                            <div class="mdc-layout-grid__inner">
+                                <div class="form-group mb-3">
+                                    <label for="first_name" class="control-label">First Name</label>
+                                    <input type="text" class="form-control rounded-0" name="first_name" id="first_name" value="{{ reg_form.data.first_name }}" required="required">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="last_name" class="control-label">Last Name</label>
+                                    <input type="text" class="form-control rounded-0" name="last_name" id="last_name" value="{{ reg_form.data.last_name }}" required="required">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="email" class="control-label">Email</label>
+                                    <input type="email" class="form-control rounded-0" name="email" id="email" value="{{ reg_form.data.email }}" required="required">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="custom_id" class="control-label">User ID</label>
+                                    <input type="text" class="form-control rounded-0" name="custom_id" id="custom_id" value="{{ reg_form.data.custom_id }}" required="required">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="mobile" class="control-label">Mobile Number</label>
+                                    <input type="text" class="form-control rounded-0" name="mobile" id="mobile" value="{{ reg_form.data.mobile }}" required="required" pattern="[0-9]+" title="Please enter only numbers">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="username" class="control-label">Username</label>
+                                    <input type="text" class="form-control rounded-0" name="username" id="username" value="{{ reg_form.data.username }}" required="required">
+                                </div>
+                                
+                                <!-- Security Questions Section -->
+                                <div class="form-group mb-3">
+                                    <h5 class="mb-2">Security Information</h5>
+                                    <p class="text-muted small">This information will be used to reset your password if you forget it.</p>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="date_of_birth" class="control-label">Date of Birth</label>
+                                    <input type="date" class="form-control rounded-0" name="date_of_birth" id="date_of_birth" value="{{ reg_form.data.date_of_birth }}" required="required">
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="security_question" class="control-label">Security Question</label>
+                                    <select class="form-control rounded-0" name="security_question" id="security_question" required="required">
+                                        <option value="">Select a security question</option>
+                                        <option value="nickname" {% if reg_form.data.security_question == 'nickname' %}selected{% endif %}>What is your nickname?</option>
+                                        <option value="pet" {% if reg_form.data.security_question == 'pet' %}selected{% endif %}>What is your pet's name?</option>
+                                        <option value="birthplace" {% if reg_form.data.security_question == 'birthplace' %}selected{% endif %}>What is your place of birth?</option>
+                                        <option value="mother_maiden" {% if reg_form.data.security_question == 'mother_maiden' %}selected{% endif %}>What is your mother's maiden name?</option>
+                                        <option value="first_school" {% if reg_form.data.security_question == 'first_school' %}selected{% endif %}>What was the name of your first school?</option>
+                                        <option value="first_car" {% if reg_form.data.security_question == 'first_car' %}selected{% endif %}>What was your first car?</option>
+                                        <option value="childhood_friend" {% if reg_form.data.security_question == 'childhood_friend' %}selected{% endif %}>What is the name of your childhood best friend?</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="security_answer" class="control-label">Security Answer</label>
+                                    <input type="text" class="form-control rounded-0" name="security_answer" id="security_answer" value="{{ reg_form.data.security_answer }}" required="required">
+                                    <small class="form-text text-muted">Remember this answer exactly as you'll need it to reset your password.</small>
+                                </div>
+                                <!-- End Security Questions Section -->
+                                
+                                <div class="form-group mb-3">
+                                    <label for="password1" class="control-label">Password</label>
+                                    <input type="password" class="form-control rounded-0" name="password1" id="password1" value="{{ reg_form.data.password1 }}" required="required" minlength="8">
+                                    <small class="form-text text-muted">Password must be at least 8 characters long.</small>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="password2" class="control-label">Confirm Password</label>
+                                    <input type="password" class="form-control rounded-0" name="password2" id="password2" value="{{ reg_form.data.password2 }}" required="required">
+                                    <div id="password-match-feedback" class="invalid-feedback">Passwords do not match.</div>
+                                </div>
+                                
+                                <div id="form-errors" class="alert alert-danger" style="display: none;"></div>
+                                {% for field in reg_form %} {% for error in field.errors %}
+                                <div class="alert alert-danger my-2">
+                                    <p>{{ error }}</p>
+                                </div>
+                                {% endfor %} {% endfor %}
+                                <div class="form-group mb-3">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <a href="{% url 'login-page' %}" class=" col-auto">
+                                            Already have an Account
+                                        </a>
+                                        <button class="btn btn-sm rounded-0 btn-primary col-6">
+                                            Create Account
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock pageContent %}
+{% block ScriptBlock %}
+<script>
+    $(function() {
+        // Real-time password matching validation
+        $('#password2').on('input', function() {
+            var pass1 = $('#password1').val();
+            var pass2 = $(this).val();
+            
+            if (pass2 !== "" && pass1 !== pass2) {
+                $(this).addClass('is-invalid');
+                $('#password-match-feedback').show();
+            } else {
+                $(this).removeClass('is-invalid');
+                $('#password-match-feedback').hide();
+            }
+        });
+        
+        $('#password1').on('input', function() {
+            if ($('#password2').val() !== "") {
+                var pass1 = $(this).val();
+                var pass2 = $('#password2').val();
+                
+                if (pass1 !== pass2) {
+                    $('#password2').addClass('is-invalid');
+                    $('#password-match-feedback').show();
+                } else {
+                    $('#password2').removeClass('is-invalid');
+                    $('#password-match-feedback').hide();
+                }
+            }
+        });
+        
+        // Custom validation function
+        function validateForm(_this) {
+            var isValid = true;
+            var errorMsg = "";
+            
+            // Check if passwords match
+            var pass1 = $('#password1').val();
+            var pass2 = $('#password2').val();
+            if (pass1 !== pass2) {
+                errorMsg += "Passwords do not match.<br>";
+                isValid = false;
+            }
+            
+            // Check if User ID is provided
+            var customId = $('#custom_id').val();
+            if (!customId || customId.trim() === '') {
+                errorMsg += "User ID is required.<br>";
+                isValid = false;
+            }
+            
+            // Check if mobile is provided
+            var mobile = $('#mobile').val();
+            if (!mobile || mobile.trim() === '') {
+                errorMsg += "Mobile number is required.<br>";
+                isValid = false;
+            }
+            
+            return {
+                valid: isValid,
+                message: errorMsg
+            };
+        }
+        
+        $('#register-user').submit(function(e) {
+            e.preventDefault();
+            var _this = $(this)
+            $('.err-msg').remove();
+            var el = $('<div>')
+            el.addClass("alert alert-danger err-msg")
+            el.hide()
+            
+            // First check the HTML5 form validation
+            if (_this[0].checkValidity() == false) {
+                _this[0].reportValidity();
+                return false;
+            }
+            
+            // Then check our custom validation
+            var validation = validateForm(_this);
+            if (!validation.valid) {
+                el.html(validation.message);
+                _this.prepend(el);
+                el.show('slow');
+                $("html, body, .modal").scrollTop(0);
+                return false;
+            }
+            
+            start_loader();
+            // Debug output before submission
+            console.log("Form data before submission:", {
+                username: $('#username').val(),
+                custom_id: $('#custom_id').val(),
+                mobile: $('#mobile').val(),
+                email: $('#email').val(),
+                // Don't log passwords in production!
+                password1_length: $('#password1').val().length,
+                password2_length: $('#password2').val().length
+            });
+            
+            $.ajax({
+                headers: {
+                    "X-CSRFToken": '{{csrf_token}}'
+                },
+                url: "{% url 'register-user' %}",
+                data: new FormData($(this)[0]),
+                cache: false,
+                contentType: false,
+                processData: false,
+                method: 'POST',
+                type: 'POST',
+                dataType: 'json',
+                timeout: 30000, // 30 second timeout
+                error: err => {
+                    console.log("AJAX Error:", err);
+                    let errorText = "A network error occurred. Please try again later.";
+                    
+                    // Try to get more detailed error information
+                    if (err.responseJSON) {
+                        errorText += "<br>Details: " + JSON.stringify(err.responseJSON);
+                    } else if (err.responseText) {
+                        try {
+                            // Try to parse the response text as JSON
+                            const jsonResponse = JSON.parse(err.responseText);
+                            if (jsonResponse.msg) {
+                                errorText = jsonResponse.msg; // Use the error message from the server
+                            } else {
+                                errorText += "<br>Details: " + JSON.stringify(jsonResponse);
+                            }
+                        } catch (e) {
+                            // If it's not JSON, use the raw text
+                            errorText += "<br>Details: " + err.responseText;
+                        }
+                    } else if (err.status) {
+                        errorText += "<br>Status: " + err.status + " " + err.statusText;
+                    }
+                    
+                    el.html(errorText);
+                    _this.prepend(el);
+                    el.show('slow');
+                    $("html, body, .modal").scrollTop(0);
+                    end_loader();
+                },
+                success: function(resp) {
+                    console.log("Server Response:", resp);
+                    
+                    // Handle case where response might be a string
+                    if (typeof resp === 'string') {
+                        try {
+                            resp = JSON.parse(resp);
+                        } catch (e) {
+                            console.error("Failed to parse response as JSON:", e);
+                            el.html("Server returned an invalid response. Please try again.");
+                            _this.prepend(el);
+                            el.show('slow');
+                            $("html, body, .modal").scrollTop(0);
+                            end_loader();
+                            return;
+                        }
+                    }
+                    
+                    if (typeof resp == 'object' && resp.status == 'success') {
+                        el.removeClass("alert alert-danger err-msg").addClass("alert alert-success");
+                        el.html("Registration successful! Redirecting to login page...");
+                        _this.prepend(el);
+                        el.show('slow');
+                        setTimeout(function() {
+                            location.href = "{% url 'login-page' %}";
+                        }, 2000);
+                    } else if (resp && resp.status == 'failed' && !!resp.msg) {
+                        el.html(resp.msg);
+                        _this.prepend(el);
+                        el.show('slow');
+                        $("html, body, .modal").scrollTop(0);
+                    } else {
+                        el.html("An error occurred. Please check all fields and try again.");
+                        _this.prepend(el);
+                        el.show('slow');
+                        $("html, body, .modal").scrollTop(0);
+                        console.error("Unexpected response:", resp);
+                    }
+                    end_loader();
+                }
+            })
+        })
+    })
+</script>
+{% endblock ScriptBlock %}

@@ -1,0 +1,75 @@
+{% load customfilter %}
+<div class="container-fluid">
+    <form action="" id="aircraft-form">
+        <input type="hidden" name="id" value="{{aircraft.id}}">
+        <div class="form-group mb-3">
+            <label for="code" class="control-label">Aircraft Code</label>
+            <input type="text" name="code" id="code" class="form-control form-control-sm rounded-0" value="{{ aircraft.code }}" required>
+        </div>
+        <div class="form-group mb-3">
+            <label for="model" class="control-label">Model</label>
+            <input type="text" name="model" id="model" class="form-control form-control-sm rounded-0" value="{{ aircraft.model }}" required>
+        </div>
+        <div class="form-group mb-3">
+            <label for="manufacturer" class="control-label">Manufacturer</label>
+            <input type="text" name="manufacturer" id="manufacturer" class="form-control form-control-sm rounded-0" value="{{ aircraft.manufacturer }}" required>
+        </div>
+        <div class="form-group mb-3">
+            <label for="business_capacity" class="control-label">Business Class Capacity</label>
+            <input type="number" name="business_capacity" id="business_capacity" class="form-control form-control-sm rounded-0" value="{{ aircraft.business_capacity|default:0 }}" required min="0">
+        </div>
+        <div class="form-group mb-3">
+            <label for="economy_capacity" class="control-label">Economy Class Capacity</label>
+            <input type="number" name="economy_capacity" id="economy_capacity" class="form-control form-control-sm rounded-0" value="{{ aircraft.economy_capacity|default:0 }}" required min="0">
+        </div>
+        <div class="form-group mb-3">
+            <label for="status" class="control-label">Status</label>
+            <select name="status" id="status" class="form-select form-select-sm rounded-0" required>
+                <option value="1" {% if aircraft.status == '1' %}selected{% endif %}>Active</option>
+                <option value="2" {% if aircraft.status == '2' %}selected{% endif %}>Inactive</option>
+            </select>
+        </div>
+    </form>
+</div>
+
+<script>
+    $(function(){
+        $('#aircraft-form').submit(function(e){
+            e.preventDefault();
+            var _this = $(this)
+            $('.err-msg').remove();
+            start_loader();
+            $.ajax({
+                url:"/save_aircraft",
+                data: new FormData($(this)[0]),
+                cache: false,
+                contentType: false,
+                processData: false,
+                method: 'POST',
+                type: 'POST',
+                dataType: 'json',
+                error:err=>{
+                    console.log(err)
+                    alert_toast("An error occurred", 'error');
+                    end_loader();
+                },
+                success:function(resp){
+                    if(typeof resp =='object' && resp.status == 'success'){
+                        location.reload()
+                    }else if(resp.status == 'failed' && !!resp.msg){
+                        var el = $('<div>')
+                            el.addClass("alert alert-danger err-msg").text(resp.msg)
+                            _this.prepend(el)
+                            el.show('slow')
+                            $("html, body").animate({ scrollTop: _this.closest('.card').offset().top }, "fast");
+                            end_loader()
+                    }else{
+                        alert_toast("An error occurred", 'error');
+                        end_loader();
+                        console.log(resp)
+                    }
+                }
+            })
+        })
+    })
+</script>

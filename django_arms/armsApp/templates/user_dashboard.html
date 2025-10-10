@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block pageContent %}
+
+<div class="container py-4">
+    <h2 class="mb-4">User Dashboard</h2>
+    
+    <!-- Notifications Section -->
+    {% if notifications %}
+    <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+        <h6><i class="fas fa-bell"></i> You have {{ notifications.count }} unread notification{{ notifications.count|pluralize }}</h6>
+        {% for notification in notifications|slice:":3" %}
+        <div class="notification-item mb-2 pb-2 {% if not forloop.last %}border-bottom{% endif %}">
+            <strong>{{ notification.title }}</strong>
+            <br><small class="text-muted">{{ notification.created_at|date:"M d, Y H:i" }}</small>
+            <br>{{ notification.message|truncatewords:20 }}
+            {% if notification.message|length > 100 %}
+            <a href="#" class="btn btn-sm btn-link p-0" onclick="showFullNotification('{{ notification.id }}')">Read more...</a>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% if notifications.count > 3 %}
+        <div class="mt-2">
+            <a href="#" class="btn btn-sm btn-outline-primary" onclick="showAllNotifications()">
+                View all {{ notifications.count }} notifications
+            </a>
+        </div>
+        {% endif %}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow">
+                <div class="card-body text-center">
+                    <i class="fas fa-search fa-3x mb-3 text-primary"></i>
+                    <h4>Search Flights</h4>
+                    <p>Look for available flights based on your travel preferences.</p>
+                    <a href="{% url 'search-flight' %}" class="btn btn-primary mt-2">Search Now</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow">
+                <div class="card-body text-center">
+                    <i class="fas fa-ticket-alt fa-3x mb-3 text-success"></i>
+                    <h4>My Bookings</h4>
+                    <p>View and manage all your flight reservations.</p>
+                    <a href="{% url 'user-reservations' %}" class="btn btn-success mt-2">View Bookings</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow">
+                <div class="card-body text-center">
+                    <i class="fas fa-user-cog fa-3x mb-3 text-info"></i>
+                    <h4>My Profile</h4>
+                    <p>Update your personal information and preferences.</p>
+                    <a href="{% url 'profile-page' %}" class="btn btn-info mt-2">Manage Profile</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Recent Reservations</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Flight</th>
+                                    <th>From - To</th>
+                                    <th>Date</th>
+                                    <th>Seat</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if recent_reservations %}
+                                    {% for res in recent_reservations %}
+                                    <tr>
+                                        <td>{{ res.flight.code }}</td>
+                                        <td>{{ res.flight.from_airport.name }} - {{ res.flight.to_airport.name }}</td>
+                                        <td>{{ res.flight.departure|date:"M d, Y" }}</td>
+                                        <td>{{ res.seat_number|default:"Not assigned" }}</td>
+                                        <td>
+                                            {% if res.status == '0' %}
+                                                <span class="badge bg-warning text-dark">Pending</span>
+                                            {% elif res.status == '1' %}
+                                                <span class="badge bg-success">Confirmed</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Cancelled</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'view-reservation-pk' res.id %}" class="btn btn-sm btn-info">
+                                                View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center">No recent reservations found</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                        {% if recent_reservations %}
+                        <div class="text-end">
+                            <a href="{% url 'user-reservations' %}" class="btn btn-outline-success">View All Reservations</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Recent Flight Searches</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if recent_searches %}
+                                    {% for search in recent_searches %}
+                                    <tr>
+                                        <td>{{ search.from_airport.name }}</td>
+                                        <td>{{ search.to_airport.name }}</td>
+                                        <td>{{ search.date }}</td>
+                                        <td>
+                                            <a href="{% url 'search-result' %}?from={{ search.from_airport.id }}&to={{ search.to_airport.id }}&date={{ search.date|date:'Y-m-d' }}" class="btn btn-sm btn-primary">
+                                                Search Again
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center">No recent searches found</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock pageContent %}
+
+{% block ScriptBlock %}
+<script>
+function showFullNotification(notificationId) {
+    // Mark notification as read and show full content
+    $.ajax({
+        headers: {
+            "X-CSRFToken": '{{csrf_token}}'
+        },
+        url: "{% url 'mark-notification-read' %}",
+        data: { id: notificationId },
+        method: 'POST',
+        success: function(resp) {
+            if (resp.status === 'success') {
+                // Show full notification in a modal or alert
+                alert(resp.full_message);
+            }
+        }
+    });
+}
+
+function showAllNotifications() {
+    // Redirect to a notifications page or show in modal
+    alert('Full notifications page will be implemented here');
+}
+
+// Auto-hide notifications after 10 seconds
+$(document).ready(function() {
+    setTimeout(function() {
+        $('.alert-info').alert('close');
+    }, 15000);
+});
+</script>
+{% endblock ScriptBlock %}

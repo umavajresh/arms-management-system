@@ -1,0 +1,1108 @@
+{% extends "base.html" %}
+{% load static %}
+{% load customfilter %}
+
+{% block headerContent %}
+<style>
+    /* Aircraft container */
+    .aircraft-container {
+        max-width: 900px;
+        width: 100%;
+        margin: 0 auto;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 120px 120px 25px 25px;
+        padding: 30px 25px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        position: relative;
+    }
+    
+    /* Aircraft outline */
+    .aircraft-outline {
+        position: relative;
+        background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 30%, #f1f5f9 70%, #f8fafc 100%);
+        border: 4px solid #2d3748;
+        border-radius: 180px 180px 40px 40px;
+        padding: 40px 20px 50px 20px;
+        min-height: 700px;
+        box-shadow: 
+            inset 0 2px 10px rgba(255,255,255,0.5),
+            0 15px 35px rgba(0,0,0,0.2);
+        overflow: hidden;
+    }
+    
+    /* Aircraft nose - more realistic */
+    .aircraft-outline::before {
+        content: '';
+        position: absolute;
+        top: -25px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80px;
+        height: 50px;
+        background: linear-gradient(180deg, #2d3748 0%, #4a5568 100%);
+        border-radius: 60px 60px 0 0;
+        box-shadow: 
+            0 -8px 15px rgba(0,0,0,0.2),
+            inset 0 2px 5px rgba(255,255,255,0.2);
+    }
+    
+    /* Cockpit window */
+    .aircraft-outline::after {
+        content: '';
+        position: absolute;
+        top: -15px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 20px;
+        background: linear-gradient(180deg, #63b3ed 0%, #3182ce 100%);
+        border-radius: 30px 30px 0 0;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+    }
+    
+    /* Seat layout container */
+    #aircraft-seats {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 25px 15px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 60px 60px 20px 20px;
+        backdrop-filter: blur(15px);
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+        box-shadow: inset 0 2px 10px rgba(255,255,255,0.3);
+    }
+    
+    /* Class section headers */
+    .class-header {
+        text-align: center;
+        font-weight: bold;
+        font-size: 16px;
+        color: #2d3748;
+        padding: 10px;
+        margin: 15px 0 10px 0;
+        background: rgba(255,255,255,0.2);
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(255,255,255,0.3);
+    }
+    
+    .business-header {
+        background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
+        color: white;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    
+    .economy-header {
+        background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+        color: white;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    
+    /* Aircraft row styling */
+    .aircraft-row {
+        display: grid;
+        grid-template-columns: 40px 1fr 30px 1fr;
+        gap: 10px;
+        align-items: center;
+        justify-items: center;
+        padding: 8px 15px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 12px;
+        transition: all 0.2s ease;
+        max-width: 650px;
+        margin: 8px auto;
+    }
+    
+    .aircraft-row:hover {
+        background: rgba(255,255,255,0.2);
+        transform: translateY(-1px);
+    }
+    
+    /* Row numbers */
+    .row-label {
+        grid-column: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 14px;
+        color: #2d3748;
+        background: rgba(255,255,255,0.3);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 2px solid rgba(255,255,255,0.5);
+    }
+    
+    /* Seat groups */
+        .seat-group {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        justify-content: center;
+        min-width: 120px;
+        padding: 5px;
+        width: 100%;
+    }
+    
+    .business-row .seat-group {
+        background: rgba(59, 130, 246, 0.15);
+        border-color: rgba(59, 130, 246, 0.3);
+    }
+    
+    .economy-row .seat-group {
+        background: rgba(107, 114, 128, 0.15);
+        border-color: rgba(107, 114, 128, 0.3);
+    }
+    
+    /* Aisle styling */
+        .aisle {
+        width: 25px;
+        min-width: 25px;
+        background: linear-gradient(90deg, #cbd5e0 0%, #e2e8f0 50%, #cbd5e0 100%);
+        height: 4px;
+        margin: 0;
+        border-radius: 2px;
+        position: relative;
+        grid-column: 3;
+    }
+    
+    .aisle::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 2px;
+        height: 25px;
+        background: rgba(160, 174, 192, 0.6);
+        border-radius: 1px;
+    }
+    
+    /* Enhanced seat styles */
+    .seat {
+        width: 38px;
+        height: 38px;
+        border: 3px solid;
+        text-align: center;
+        line-height: 32px;
+        cursor: pointer;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: bold;
+        position: relative;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 
+            0 3px 6px rgba(0,0,0,0.15),
+            inset 0 1px 2px rgba(255,255,255,0.2);
+        user-select: none;
+    }
+    
+    .seat:hover:not(.unavailable) {
+        transform: scale(1.1) translateY(-2px);
+        box-shadow: 
+            0 8px 15px rgba(0,0,0,0.25),
+            inset 0 2px 4px rgba(255,255,255,0.3);
+    }
+    
+    /* Business class seats - Premium styling */
+    .seat.business.available {
+        background: linear-gradient(135deg, #3b82f6 0%, #1e40af 50%, #1d4ed8 100%);
+        color: white;
+        border-color: #1e3a8a;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    
+    .seat.business.available::before {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        right: 2px;
+        height: 8px;
+        background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(255,255,255,0.3) 50%, 
+            transparent 100%);
+        border-radius: 3px;
+    }
+    
+    /* Economy class seats - Standard styling */
+    .seat.economy.available {
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%);
+        color: white;
+        border-color: #374151;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    
+    .seat.economy.available::before {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        right: 2px;
+        height: 6px;
+        background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(255,255,255,0.2) 50%, 
+            transparent 100%);
+        border-radius: 2px;
+    }
+    
+    /* Selected seat animation */
+    .seat.selected {
+        background: linear-gradient(135deg, #10b981 0%, #047857 50%, #065f46 100%) !important;
+        color: white !important;
+        border-color: #064e3b !important;
+        animation: selectedPulse 2s infinite;
+        box-shadow: 
+            0 0 20px rgba(16, 185, 129, 0.6),
+            0 5px 15px rgba(0,0,0,0.3),
+            inset 0 2px 4px rgba(255,255,255,0.3);
+    }
+    
+    .seat.selected::before {
+        background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(255,255,255,0.4) 50%, 
+            transparent 100%) !important;
+        height: 10px !important;
+    }
+    
+    /* Unavailable seats */
+    .seat.unavailable {
+        background: linear-gradient(135deg, #dc2626 0%, #991b1b 50%, #7f1d1d 100%) !important;
+        color: white !important;
+        border-color: #7f1d1d !important;
+        cursor: not-allowed;
+        opacity: 0.8;
+        position: relative;
+    }
+    
+    .seat.unavailable::after {
+        content: '✕';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 16px;
+        font-weight: bold;
+        color: rgba(255,255,255,0.9);
+    }
+    
+    @keyframes selectedPulse {
+        0%, 100% { 
+            transform: scale(1);
+            box-shadow: 
+                0 0 20px rgba(16, 185, 129, 0.6),
+                0 5px 15px rgba(0,0,0,0.3);
+        }
+        50% { 
+            transform: scale(1.05);
+            box-shadow: 
+                0 0 25px rgba(16, 185, 129, 0.8),
+                0 8px 20px rgba(0,0,0,0.4);
+        }
+    }
+    
+    /* Wings - more realistic */
+    .wings {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 12px;
+        z-index: -1;
+    }
+    
+    .wing {
+        position: absolute;
+        height: 100px;
+        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 50%, #a0aec0 100%);
+        border: 2px solid #718096;
+        top: -50px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    
+    .wing-left {
+        width: 120px;
+        left: -120px;
+        border-radius: 15px 0 0 15px;
+        transform: skewY(-2deg);
+    }
+    
+    .wing-right {
+        width: 120px;
+        right: -120px;
+        border-radius: 0 15px 15px 0;
+        transform: skewY(2deg);
+    }
+    
+    /* Emergency exits */
+    .emergency-exit {
+        position: absolute;
+        color: #dc2626;
+        font-weight: bold;
+        font-size: 11px;
+        background: rgba(255,255,255,0.9);
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: 2px solid #dc2626;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    .exit-top-left { top: 80px; left: 10px; }
+    .exit-top-right { top: 80px; right: 10px; }
+    .exit-middle-left { top: 50%; left: 10px; transform: translateY(-50%); }
+    .exit-middle-right { top: 50%; right: 10px; transform: translateY(-50%); }
+    .exit-bottom-left { bottom: 80px; left: 10px; }
+    .exit-bottom-right { bottom: 80px; right: 10px; }
+    
+    /* Facilities - enhanced */
+    .facility {
+        position: absolute;
+        width: 28px;
+        height: 28px;
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+        text-align: center;
+        line-height: 28px;
+        border-radius: 50%;
+        font-size: 13px;
+        font-weight: bold;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+        border: 2px solid #6d28d9;
+    }
+    
+    .lavatory-front-left { top: 60px; left: 40px; }
+    .lavatory-front-right { top: 60px; right: 40px; }
+    .lavatory-rear-left { bottom: 60px; left: 40px; }
+    .lavatory-rear-right { bottom: 60px; right: 40px; }
+    
+    /* Legend styling */
+    .legend {
+        margin-top: 30px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+        padding: 20px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin: 0 5px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #2d3748;
+    }
+    
+    .legend-box {
+        width: 24px;
+        height: 24px;
+        margin-right: 8px;
+        border: 2px solid #4a5568;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    /* Plane header */
+    .plane-header {
+        background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 15px;
+        text-align: center;
+        margin-bottom: 25px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        font-size: 18px;
+        font-weight: bold;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .aircraft-container {
+            max-width: 100%;
+            padding: 20px 15px;
+        }
+        
+        .seat {
+            width: 32px;
+            height: 32px;
+            line-height: 26px;
+            font-size: 10px;
+        }
+        
+        .aircraft-row {
+            gap: 8px;
+        }
+        
+        .seat-group {
+            gap: 4px;
+            padding: 6px 8px;
+        }
+        
+        .row-label {
+            width: 28px;
+            height: 28px;
+            font-size: 12px;
+        }
+    }
+</style>
+{% endblock headerContent %}
+
+{% block pageContent %}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Select Your Seat</h2>
+        <button type="button" class="btn btn-secondary" onclick="history.back()">
+            <i class="fas fa-arrow-left"></i> Back
+        </button>
+    </div>
+    
+    <!-- Passenger Count Selection -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-users"></i> Number of Passengers</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="passenger-count" class="form-label">How many passengers? (Max 6)</label>
+                            <select id="passenger-count" class="form-select" onchange="updateSeatSelection()">
+                                <option value="1" selected>1 Passenger</option>
+                                <option value="2">2 Passengers</option>
+                                <option value="3">3 Passengers</option>
+                                <option value="4">4 Passengers</option>
+                                <option value="5">5 Passengers</option>
+                                <option value="6">6 Passengers</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-info mt-4 mb-0">
+                                <small><i class="fas fa-info-circle"></i> Select the number of passengers, then choose seats on the aircraft below.</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-9">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Seat Selection - Flight {{ flight.code }}</h4>
+                    <small class="text-light">Select <span id="seats-needed">1</span> seat(s) for your group</small>
+                </div>
+                <div class="card-body">
+                    <div class="plane-header">
+                        <i class="fas fa-plane"></i> {{ flight.airline.name }} - {{ flight.air_craft_code }}
+                    </div>
+                    
+                    <div class="aircraft-container">
+                        <div class="aircraft-outline">
+                            <!-- Dynamic Seat Layout -->
+                            <div id="aircraft-seats">
+                                <!-- Seats will be generated dynamically by JavaScript -->
+                            </div>
+                            
+                            <!-- Emergency exits -->
+                            <div class="emergency-exit exit-top-left">EXIT</div>
+                            <div class="emergency-exit exit-top-right">EXIT</div>
+                            <div class="emergency-exit exit-middle-left">EXIT</div>
+                            <div class="emergency-exit exit-middle-right">EXIT</div>
+                            <div class="emergency-exit exit-bottom-left">EXIT</div>
+                            <div class="emergency-exit exit-bottom-right">EXIT</div>
+                            
+                            <!-- Wings -->
+                            <div class="wings">
+                                <div class="wing wing-left"></div>
+                                <div class="wing wing-right"></div>
+                            </div>
+                            
+                            <!-- Lavatories -->
+                            <div class="facility lavatory lavatory-front-left">L</div>
+                            <div class="facility lavatory lavatory-front-right">L</div>
+                            <div class="facility lavatory lavatory-rear-left">L</div>
+                            <div class="facility lavatory lavatory-rear-right">L</div>
+                        </div>
+                        
+                        <!-- Legend -->
+                        <div class="legend">
+                            <div class="legend-item">
+                                <div class="legend-box" style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);"></div>
+                                <span>Business Class</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-box" style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);"></div>
+                                <span>Economy Class</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-box" style="background: linear-gradient(135deg, #10b981 0%, #047857 100%);"></div>
+                                <span>Selected</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-box" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);"></div>
+                                <span>Occupied</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-box" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; text-align: center; font-size: 10px; line-height: 20px;">L</div>
+                                <span>Lavatory</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Booking Summary</h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>Flight:</strong> {{ flight.code }}<br>
+                        <strong>Aircraft:</strong> {{ flight.air_craft_code }}<br>
+                        <strong>From:</strong> {{ flight.from_airport.name }}<br>
+                        <strong>To:</strong> {{ flight.to_airport.name }}<br>
+                        <strong>Departure:</strong> {{ flight.departure|date:"M d, Y h:i A" }}<br>
+                        <strong>Arrival:</strong> {{ flight.estimated_arrival|date:"M d, Y h:i A" }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Selected Seats:</strong>
+                        <div id="selected-seats-list" class="mt-2">
+                            <p class="text-muted">No seats selected</p>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between">
+                            <strong>Total Price:</strong>
+                            <strong id="total-price">₹0.00</strong>
+                        </div>
+                        <div id="selection-status" class="mt-2"></div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <small>
+                            <i class="fas fa-info-circle"></i> Click on an available seat to select it. Business class seats are in the front (3+3 layout), Economy class seats follow (4+4 layout).
+                        </small>
+                    </div>
+                    
+                    <form id="booking-form" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="flight" value="{{ flight.id }}">
+                        <input type="hidden" name="seat_number" id="seat_number_input">
+                        <input type="hidden" name="type" id="seat_type_input">
+                        
+                        <button type="submit" class="btn btn-success w-100" id="continue-btn" disabled>
+                            Continue to Passenger Details
+                        </button>
+                    </form>
+                </div>
+                
+                <div class="card-footer">
+                    <div class="text-center mb-2">
+                        <small class="text-muted">Flight amenities may vary. Seat map is for illustration purposes.</small>
+                    </div>
+                    <div class="text-center">
+                        <span class="badge bg-success me-1">
+                            <i class="fas fa-wifi"></i> Wi-Fi
+                        </span>
+                        <span class="badge bg-secondary me-1">
+                            <i class="fas fa-plug"></i> Power
+                        </span>
+                        <span class="badge bg-info">
+                            <i class="fas fa-utensils"></i> Meals
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock pageContent %}
+
+{% block ScriptBlock %}
+<script>
+    $(document).ready(function(){
+        // Business class price
+        const businessPrice = "{{ flight.business_class_price }}";
+        const businessPriceFormatted = '₹' + parseFloat(businessPrice).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        // Economy class price
+        const economyPrice = "{{ flight.economy_price }}";
+        const economyPriceFormatted = '₹' + parseFloat(economyPrice).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        // Mark seats as unavailable based on reservations
+        {% for seat in business_seats %}
+            {% if not seat.available %}
+                $('div[data-seat="{{ seat.seat }}"]').removeClass('available').addClass('unavailable').data('available', false);
+            {% endif %}
+        {% endfor %}
+        
+        {% for seat in economy_seats %}
+            {% if not seat.available %}
+                $('div[data-seat="{{ seat.seat }}"]').removeClass('available').addClass('unavailable').data('available', false);
+            {% endif %}
+        {% endfor %}
+        
+        // Flight capacity data
+        const businessClassSlots = {{ flight.business_class_slots }};
+        const economySlots = {{ flight.economy_slots }};
+        
+        // Generate aircraft layout based on actual capacity
+        function generateAircraftLayout() {
+            const container = $('#aircraft-seats');
+            container.empty();
+            
+            // Calculate rows based on capacity
+            const businessRows = Math.ceil(businessClassSlots / 6); // 3+3 for business
+            const economyRows = Math.ceil(economySlots / 8); // 4+4 for economy
+            
+            let html = '';
+            
+            // Business Class Section Header
+            if (businessRows > 0) {
+                html += '<div class="class-header business-header"><i class="fas fa-crown"></i> Business Class</div>';
+                
+                // Generate Business Class seats (3+3 layout)
+                for (let r = 1; r <= businessRows; r++) {
+                    html += '<div class="aircraft-row business-row">';
+                    
+                    // Row label
+                    html += `<div class="row-label">${r}</div>`;
+                    
+                    // Left side seats: A, B, C
+                    html += '<div class="seat-group">';
+                    for (let col of ['A', 'B', 'C']) {
+                        const seatCode = `${r}${col}`;
+                        const isAvailable = !isBusinessSeatTaken(seatCode);
+                        
+                        html += `
+                            <div class="seat business ${ isAvailable ? 'available' : 'unavailable'}" 
+                                 data-seat="${seatCode}" 
+                                 data-type="1" 
+                                 data-class="business"
+                                 title="Business Class - Seat ${seatCode}">
+                                ${r}${col}
+                            </div>
+                        `;
+                    }
+                    html += '</div>';
+                    
+                    // Aisle
+                    html += '<div class="aisle"></div>';
+                    
+                    // Right side seats: D, E, F
+                    html += '<div class="seat-group">';
+                    for (let col of ['D', 'E', 'F']) {
+                        const seatCode = `${r}${col}`;
+                        const isAvailable = !isBusinessSeatTaken(seatCode);
+                        
+                        html += `
+                            <div class="seat business ${ isAvailable ? 'available' : 'unavailable'}" 
+                                 data-seat="${seatCode}" 
+                                 data-type="1" 
+                                 data-class="business"
+                                 title="Business Class - Seat ${seatCode}">
+                                ${r}${col}
+                            </div>
+                        `;
+                    }
+                    html += '</div>';
+                    
+                    html += '</div>'; // Close aircraft-row
+                }
+            }
+            
+            // Economy Class Section Header
+            if (economyRows > 0) {
+                html += '<div class="class-header economy-header"><i class="fas fa-plane"></i> Economy Class</div>';
+                
+                // Generate Economy Class seats (4+4 layout)
+                for (let r = 1; r <= economyRows; r++) {
+                    const actualRow = businessRows + r;
+                    
+                    html += '<div class="aircraft-row economy-row">';
+                    
+                    // Row label
+                    html += `<div class="row-label">${actualRow}</div>`;
+                    
+                    // Left side seats: A, B, C, D
+                    html += '<div class="seat-group">';
+                    for (let col of ['A', 'B', 'C', 'D']) {
+                        const seatCode = `${actualRow}${col}`;
+                        const isAvailable = !isEconomySeatTaken(seatCode);
+                        
+                        html += `
+                            <div class="seat economy ${ isAvailable ? 'available' : 'unavailable'}" 
+                                 data-seat="${seatCode}" 
+                                 data-type="2" 
+                                 data-class="economy"
+                                 title="Economy Class - Seat ${seatCode}">
+                                ${actualRow}${col}
+                            </div>
+                        `;
+                    }
+                    html += '</div>';
+                    
+                    // Aisle
+                    html += '<div class="aisle"></div>';
+                    
+                    // Right side seats: E, F, G, H
+                    html += '<div class="seat-group">';
+                    for (let col of ['E', 'F', 'G', 'H']) {
+                        const seatCode = `${actualRow}${col}`;
+                        const isAvailable = !isEconomySeatTaken(seatCode);
+                        
+                        html += `
+                            <div class="seat economy ${ isAvailable ? 'available' : 'unavailable'}" 
+                                 data-seat="${seatCode}" 
+                                 data-type="2" 
+                                 data-class="economy"
+                                 title="Economy Class - Seat ${seatCode}">
+                                ${actualRow}${col}
+                            </div>
+                        `;
+                    }
+                    html += '</div>';
+                    
+                    html += '</div>'; // Close aircraft-row
+                }
+            }
+            
+            // Set the HTML all at once
+            container.html(html);
+            
+            // Reattach click handlers after DOM update
+            attachSeatClickHandlers();
+        }
+        
+        // Check if business seat is taken (from server data)
+        function isBusinessSeatTaken(seatCode) {
+            {% for seat in business_seats %}
+            if ('{{ seat.seat }}' === seatCode && !{{ seat.available|yesno:"true,false" }}) {
+                return true;
+            }
+            {% endfor %}
+            return false;
+        }
+        
+        // Check if economy seat is taken (from server data)
+        function isEconomySeatTaken(seatCode) {
+            {% for seat in economy_seats %}
+            if ('{{ seat.seat }}' === seatCode && !{{ seat.available|yesno:"true,false" }}) {
+                return true;
+            }
+            {% endfor %}
+            return false;
+        }
+        
+        // Initialize aircraft layout
+        generateAircraftLayout();
+        
+        // Track selected seats
+        let selectedSeats = [];
+        let maxSeats = 1;
+        
+        // Update seat selection when passenger count changes
+        window.updateSeatSelection = function() {
+            const passengerCount = parseInt($('#passenger-count').val());
+            maxSeats = passengerCount;
+            $('#seats-needed').text(passengerCount);
+            
+            // Clear current selections if exceeding new limit
+            if (selectedSeats.length > maxSeats) {
+                $('.seat').removeClass('selected');
+                selectedSeats = [];
+                updateSummary();
+            }
+            
+            updateContinueButton();
+        };
+        
+        // Attach click handlers to seats
+        function attachSeatClickHandlers() {
+            $('.seat').off('click').on('click', function(){
+                // Check if seat is available
+                if($(this).hasClass('unavailable')) {
+                    // Add visual feedback for unavailable seat
+                    $(this).addClass('shake');
+                    setTimeout(() => $(this).removeClass('shake'), 600);
+                    
+                    // Show a more user-friendly message
+                    const seatNumber = $(this).data('seat');
+                    showToast(`Seat ${seatNumber} is already taken. Please select another seat.`, 'warning');
+                    return;
+                }
+                
+                const seat = $(this).data('seat');
+                const type = $(this).data('type');
+                const seatIndex = selectedSeats.findIndex(s => s.seat === seat);
+                
+                if ($(this).hasClass('selected')) {
+                    // Deselect seat
+                    $(this).removeClass('selected');
+                    if (seatIndex > -1) {
+                        selectedSeats.splice(seatIndex, 1);
+                    }
+                    showToast(`Seat ${seat} deselected`, 'info');
+                } else {
+                    // Select seat
+                    if (selectedSeats.length >= maxSeats) {
+                        showToast(`You can only select ${maxSeats} seat(s) for your group.`, 'warning');
+                        return;
+                    }
+                    
+                    $(this).addClass('selected');
+                    
+                    let seatClass = 'Economy';
+                    let seatZone = '';
+                    
+                    if (parseInt(type) === 1) {
+                        seatClass = 'Business Class';
+                    } else {
+                        // Determine economy zone based on row position
+                        const rowNum = parseInt(seat.match(/\d+/)[0]);
+                        const totalRows = $('.aircraft-row').length;
+                        const businessRows = $('.business-row').length;
+                        const economyRowPosition = rowNum - businessRows;
+                        const economyTotalRows = totalRows - businessRows;
+                        
+                        if (economyRowPosition <= economyTotalRows / 3) {
+                            seatZone = ' (Front)';
+                        } else if (economyRowPosition <= (economyTotalRows * 2) / 3) {
+                            seatZone = ' (Middle)';
+                        } else {
+                            seatZone = ' (Back)';
+                        }
+                    }
+                    
+                    const price = parseInt(type) === 1 ? parseFloat(businessPrice) : parseFloat(economyPrice);
+                    
+                    selectedSeats.push({
+                        seat: seat,
+                        type: type,
+                        class: parseInt(type) === 1 ? 'business' : 'economy',
+                        display_class: seatClass + seatZone,
+                        price: price
+                    });
+                    
+                    showToast(`Seat ${seat} selected (${seatClass})`, 'success');
+                }
+                
+                updateSummary();
+                updateContinueButton();
+            });
+        }
+        
+        // Toast notification function
+        function showToast(message, type = 'info') {
+            // Remove existing toasts
+            $('.toast-notification').remove();
+            
+            const toastClass = {
+                'success': 'alert-success',
+                'warning': 'alert-warning', 
+                'info': 'alert-info',
+                'error': 'alert-danger'
+            }[type] || 'alert-info';
+            
+            const toast = $(`
+                <div class="toast-notification alert ${toastClass} alert-dismissible fade show position-fixed" 
+                     style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : type === 'error' ? 'times-circle' : 'info-circle'}"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `);
+            
+            $('body').append(toast);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                toast.fadeOut(() => toast.remove());
+            }, 3000);
+        }
+        
+        function updateSummary() {
+            if (selectedSeats.length === 0) {
+                $('#selected-seats-list').html('<p class="text-muted">No seats selected</p>');
+                $('#total-price').text('₹0.00');
+                return;
+            }
+            
+            let summaryHtml = '';
+            let totalPrice = 0;
+            
+            selectedSeats.forEach((seat, index) => {
+                const priceFormatted = '₹' + seat.price.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                const badgeClass = seat.class === 'business' ? 'bg-primary' : 'bg-secondary';
+                
+                summaryHtml += `
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-3 bg-light rounded shadow-sm">
+                        <div>
+                            <div class="d-flex align-items-center mb-1">
+                                <strong class="me-2">Passenger ${index + 1}</strong>
+                                <span class="badge ${badgeClass}">${seat.display_class}</span>
+                            </div>
+                            <small class="text-muted">
+                                <i class="fas fa-map-pin"></i> Seat ${seat.seat}
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <strong class="text-success">${priceFormatted}</strong>
+                        </div>
+                    </div>
+                `;
+                totalPrice += seat.price;
+            });
+            
+            $('#selected-seats-list').html(summaryHtml);
+            $('#total-price').text('₹' + totalPrice.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+        }
+        
+        function updateContinueButton() {
+            const hasCorrectSeats = selectedSeats.length === maxSeats;
+            $('#continue-btn').prop('disabled', !hasCorrectSeats);
+            
+            if (selectedSeats.length < maxSeats) {
+                $('#selection-status').html(`<small class="text-warning"><i class="fas fa-exclamation-triangle"></i> Please select ${maxSeats - selectedSeats.length} more seat(s)</small>`);
+            } else if (selectedSeats.length === maxSeats) {
+                $('#selection-status').html(`<small class="text-success"><i class="fas fa-check-circle"></i> All seats selected!</small>`);
+            }
+        }
+        
+        // Form submission
+        $('#booking-form').submit(function(e){
+            if(selectedSeats.length === 0) {
+                e.preventDefault();
+                showToast('Please select seats first', 'warning');
+                return false;
+            }
+            
+            if(selectedSeats.length !== maxSeats) {
+                e.preventDefault();
+                showToast(`Please select exactly ${maxSeats} seat(s) for your group`, 'warning');
+                return false;
+            }
+            
+            // Store selected seats in session
+            const selectedSeatsData = {
+                seats: selectedSeats,
+                passenger_count: maxSeats
+            };
+            
+            // Add hidden inputs for form submission
+            $(this).append(`<input type="hidden" name="selected_seats" value='${JSON.stringify(selectedSeatsData)}'>`);
+            
+            // Show loading state
+            $('#continue-btn').html('<i class="fas fa-spinner fa-spin"></i> Processing...').prop('disabled', true);
+            
+            console.log('Form submitted with seats:', selectedSeatsData);
+        });
+        
+        // Add shake animation for unavailable seats
+        $('<style>').prop('type', 'text/css').html(`
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+                20%, 40%, 60%, 80% { transform: translateX(5px); }
+            }
+            .shake {
+                animation: shake 0.6s;
+            }
+        `).appendTo('head');
+        
+        // Initialize
+        updateSummary();
+        updateContinueButton();
+        
+        // Add some visual enhancements on page load
+        setTimeout(() => {
+            $('.aircraft-container').addClass('loaded');
+        }, 300);
+    });
+</script>
+
+<!-- Additional CSS for enhancements -->
+<style>
+    .aircraft-container {
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.6s ease;
+    }
+    
+    .aircraft-container.loaded {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .toast-notification {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .seat {
+        will-change: transform;
+    }
+    
+    /* Additional responsive improvements */
+    @media (max-width: 576px) {
+        .aircraft-container {
+            border-radius: 80px 80px 20px 20px;
+            padding: 20px 10px;
+        }
+        
+        .aircraft-outline {
+            padding: 30px 10px 40px 10px;
+            border-radius: 120px 120px 30px 30px;
+        }
+        
+        .seat-group {
+            gap: 3px;
+            padding: 4px 6px;
+        }
+        
+        .seat {
+            width: 28px;
+            height: 28px;
+            line-height: 22px;
+            font-size: 9px;
+        }
+        
+        .class-header {
+            font-size: 14px;
+            padding: 8px;
+            margin: 10px 0;
+        }
+        
+        .legend {
+            gap: 10px;
+            padding: 15px;
+        }
+        
+        .legend-item {
+            font-size: 12px;
+        }
+        
+        .legend-box {
+            width: 20px;
+            height: 20px;
+        }
+    }
+</style>
+{% endblock ScriptBlock %}

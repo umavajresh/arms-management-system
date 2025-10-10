@@ -1,0 +1,322 @@
+{% extends 'base.html' %} {% load static %} {% load humanize %} {% load customfilter %} {% block pageContent %}
+<style>
+    .al-logo {
+        height: 5em;
+        width: 5em;
+        object-fit: scale-down;
+        object-position: center center;
+    }
+    
+    /* Filter panel styling */
+    .filter-panel {
+        transition: all 0.3s ease;
+    }
+    
+    .filter-panel:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .filter-header {
+        cursor: pointer;
+    }
+    
+    /* Flight card styling */
+    .flight-card {
+        transition: transform 0.2s ease;
+        border-left: 4px solid transparent;
+    }
+    
+    .flight-card:hover {
+        transform: translateY(-5px);
+        border-left: 4px solid #0d6efd;
+    }
+    
+    /* Price badge styling */
+    .price-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: #28a745;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-weight: bold;
+    }
+    
+    /* Time of day indicators */
+    .time-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+    
+    .time-morning {
+        background-color: #ffc107; /* Yellow */
+    }
+    
+    .time-afternoon {
+        background-color: #fd7e14; /* Orange */
+    }
+    
+    .time-evening {
+        background-color: #6f42c1; /* Purple */
+    }
+    
+    .time-night {
+        background-color: #343a40; /* Dark */
+    }
+</style>
+<section class="py-4">
+    <div class="container">
+        <h3 class="fw-bolder text-center">Search Result</h3>
+        <center>
+            <hr class="bg-primary opacity-100" style="height:3px" width="5%">
+        </center>
+        
+        <!-- Filter and Sort Section -->
+        <div class="row mb-4">
+            <div class="col-lg-10 col-md-12 mx-auto">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="m-0">Filter & Sort Options</h4>
+                    </div>
+                    <div class="card-body">
+                        <form action="{% url 'search-result-with-params' from_airport to_airport departure_date %}" method="get" id="filter-form">
+                            <div class="row">
+                                <!-- Price Range Filter -->
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Price Range</label>
+                                    <div class="row g-2">
+                                        <div class="col">
+                                            <div class="input-group">
+                                                <span class="input-group-text">₹</span>
+                                                <input type="number" class="form-control" name="min_price" id="min-price" placeholder="Min" value="{{ min_price }}">
+                                            </div>
+                                        </div>
+                                        <div class="col">
+                                            <div class="input-group">
+                                                <span class="input-group-text">₹</span>
+                                                <input type="number" class="form-control" name="max_price" id="max-price" placeholder="Max" value="{{ max_price }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Time Filter -->
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label fw-bold">Departure Time</label>
+                                    <select class="form-select" name="time_filter">
+                                        <option value="" {% if not time_filter %}selected{% endif %}>Any Time</option>
+                                        <option value="morning" {% if time_filter == 'morning' %}selected{% endif %}>Morning (6 AM - 12 PM)</option>
+                                        <option value="afternoon" {% if time_filter == 'afternoon' %}selected{% endif %}>Afternoon (12 PM - 5 PM)</option>
+                                        <option value="evening" {% if time_filter == 'evening' %}selected{% endif %}>Evening (5 PM - 9 PM)</option>
+                                        <option value="night" {% if time_filter == 'night' %}selected{% endif %}>Night (9 PM - 6 AM)</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Price Sort -->
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label fw-bold">Sort by Price</label>
+                                    <select class="form-select" name="price_sort">
+                                        <option value="" {% if not price_sort %}selected{% endif %}>Default (By Time)</option>
+                                        <option value="asc" {% if price_sort == 'asc' %}selected{% endif %}>Lowest First</option>
+                                        <option value="desc" {% if price_sort == 'desc' %}selected{% endif %}>Highest First</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-primary px-4">Apply Filters</button>
+                                <a href="{% url 'search-result-with-params' from_airport to_airport departure_date %}" class="btn btn-outline-secondary ms-2">Reset</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-12 col-sm-12 col-xs-12">
+                {% if flights %}
+                <div class="alert alert-info">
+                    Found {{ flights|length }} flight(s) matching your criteria.
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    No flights found matching your criteria. Try adjusting your filters.
+                </div>
+                {% endif %}
+                <div class="card rounded-0 shadow">
+                    <div class="card-body">
+                        <div class="container-fluid">
+                            <div class="list-group">
+                                {% for flight in flights %}
+                                <div class="list-group-item flight-card position-relative mb-3">
+                                    <!-- Time of day indicator -->
+                                    {% with hour=flight.departure|date:"H"|add:"0" %}
+                                    {% if hour >= 6 and hour < 12 %}
+                                    <div class="time-indicator time-morning" title="Morning Flight"></div>
+                                    {% elif hour >= 12 and hour < 17 %}
+                                    <div class="time-indicator time-afternoon" title="Afternoon Flight"></div>
+                                    {% elif hour >= 17 and hour < 21 %}
+                                    <div class="time-indicator time-evening" title="Evening Flight"></div>
+                                    {% else %}
+                                    <div class="time-indicator time-night" title="Night Flight"></div>
+                                    {% endif %}
+                                    {% endwith %}
+                                    
+                                    <!-- Price Badge -->
+                                    <span class="price-badge">
+                                        Economy: {{ flight.economy_price|inr }}
+                                    </span>
+                                    
+                                    <div class="d-flex w-100 align-items-center">
+                                        <div class="col-auto text-center px-3">
+                                            <img src="{% if flight.airline.image_path %}{{ flight.airline.image_path.url}}{% else %}{% static 'assets/default/img/no-image-available.png' %}{% endif %}" alt="{{ flight.airline.name}}" class="img-thumbnail rounded-circle al-logo">
+                                        </div>
+                                        <div class="col-auto flex-shrink-1 flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <h4 class="m-0"><b>Flight - {{flight.code}}</b></h4>
+                                                <span class="badge bg-info">{{ flight.airline.name }}</span>
+                                            </div>
+                                            <hr>
+                                            <div class="row">
+                                                <!-- Flight Details -->
+                                                <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+                                                    <!-- From/To with Time -->
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <div class="text-center me-3">
+                                                            <div class="fw-bold">{{ flight.departure|date:"H:i" }}</div>
+                                                            <small>{{ flight.from_airport.name }}</small>
+                                                        </div>
+                                                        <div class="flex-grow-1 text-center">
+                                                            <i class="fas fa-plane" style="font-size: 1.2rem;"></i>
+                                                            <div class="text-muted">
+                                                                {% with dur=flight.estimated_arrival|timeuntil:flight.departure %}
+                                                                {{ dur }}
+                                                                {% endwith %}
+                                                            </div>
+                                                        </div>
+                                                        <div class="text-center ms-3">
+                                                            <div class="fw-bold">{{ flight.estimated_arrival|date:"H:i" }}</div>
+                                                            <small>{{ flight.to_airport.name }}</small>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <dl class="d-flex m-0">
+                                                        <dt class="m-0 fw-bold col-auto px-1">Date:</dt>
+                                                        <dd class="m-0 col-auto flex-shrink-1 flex-grow-1">{{flight.departure|date:"F d, Y"}}</dd>
+                                                    </dl>
+                                                    <dl class="d-flex m-0">
+                                                        <dt class="m-0 fw-bold col-auto px-1">Aircraft:</dt>
+                                                        <dd class="m-0 col-auto flex-shrink-1 flex-grow-1">{{flight.air_craft_code}}</dd>
+                                                    </dl>
+                                                </div>
+                                                
+                                                <!-- Pricing and Availability -->
+                                                <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+                                                    <div class="card bg-light mb-2">
+                                                        <div class="card-body py-2">
+                                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                                <span><i class="fas fa-briefcase text-primary"></i> Business</span>
+                                                                <span class="fw-bold">{{flight.business_class_price|inr}}</span>
+                                                                <span class="badge bg-secondary">{{flight.b_slot}} left</span>
+                                                            </div>
+                                                            <div class="d-flex justify-content-between align-items-center">
+                                                                <span><i class="fas fa-couch text-success"></i> Economy</span>
+                                                                <span class="fw-bold">{{flight.economy_price|inr}}</span>
+                                                                <span class="badge bg-secondary">{{flight.e_slot}} left</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="my-2 text-center">
+                                                <a href="{% url 'seat-selection' flight.id %}" class="btn btn-primary w-50 rounded-pill">
+                                                    <i class="fas fa-ticket-alt me-1"></i> Select Seat & Reserve
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-plane-slash fa-5x text-muted mb-3"></i>
+                                    <h4 class="text-muted">No flights match your search criteria</h4>
+                                    <p>Try adjusting your filters or search for a different date.</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock pageContent %} {% block ScriptBlock %}
+<script>
+    $(function() {
+        // Initialize Select2 elements if present
+        if ($('.select2').length > 0) {
+            $('.select2').select2({
+                placeholder: "Please Select Here",
+                width: "100%",
+                containerCssClass: 'form-control form-control-sm rounded-0'
+            });
+        }
+        
+        // Handle flight search validation
+        $('#search-flight').submit(function(e) {
+            e.preventDefault()
+            var _this = $(this)
+            $('.err-msg').remove();
+            var el = $('<div>')
+            el.addClass("alert alert-danger err-msg")
+            el.hide()
+            if ($('#from_airport').val() == $('#to_airport').val()) {
+                el.text("Invalid From and To Airports.")
+                _this.append(el)
+                el.show('slow')
+                $('html, body, .modal').scrollTop(0)
+                return false
+            }
+        });
+        
+        // Handle filter form submission
+        $('#filter-form').on('submit', function(e) {
+            // Remove empty fields to keep URL clean
+            $(this).find('input, select').each(function() {
+                if ($(this).val() === '' || $(this).val() === null) {
+                    $(this).prop('disabled', true);
+                }
+            });
+        });
+        
+        // Initialize price range inputs with available min/max if not set
+        const minAvailablePrice = "{{ min_available_price|default:0 }}";
+        const maxAvailablePrice = "{{ max_available_price|default:1000 }}";
+        
+        if (!$('#min-price').val()) {
+            $('#min-price').attr('placeholder', 'Min (₹' + minAvailablePrice + ')');
+        }
+        
+        if (!$('#max-price').val()) {
+            $('#max-price').attr('placeholder', 'Max (₹' + maxAvailablePrice + ')');
+        }
+        
+        // Ensure min doesn't exceed max
+        $('#min-price, #max-price').on('change', function() {
+            const minPrice = parseInt($('#min-price').val()) || 0;
+            const maxPrice = parseInt($('#max-price').val()) || maxAvailablePrice;
+            
+            if (minPrice > maxPrice && maxPrice > 0) {
+                $('#min-price').val(maxPrice);
+            }
+        });
+    });
+</script>
+{% endblock ScriptBlock %}
