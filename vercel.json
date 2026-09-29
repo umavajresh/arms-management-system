@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "django_arms/django_arms/wsgi.py",
+      "src": "api/index.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "django_arms/django_arms/wsgi.py"
+      "dest": "api/index.py"
     }
   ]
 }
