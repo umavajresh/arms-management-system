@@ -26,6 +26,192 @@
     <script src="{% static 'assets/bootstrap/js/bootstrap.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'assets/default/js/script.js' %}"></script>
     <style>
+        :root {
+            --bg-1: #070b14;
+            --bg-2: #0d1524;
+            --bg-3: #101c31;
+            --panel: rgba(15, 21, 32, 0.9);
+            --panel-soft: rgba(18, 25, 39, 0.82);
+            --panel-strong: rgba(11, 16, 24, 0.96);
+            --line: rgba(143, 176, 255, 0.18);
+            --blue: #7cc7ff;
+            --cyan: #5eead4;
+            --purple: #8b5cf6;
+            --pink: #f472b6;
+            --text: #edf6ff;
+            --muted: #a3b5d1;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --shadow: 0 18px 45px rgba(9, 14, 24, 0.65);
+        }
+
+        body {
+            font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(124, 199, 255, 0.18), transparent 22%),
+                radial-gradient(circle at right, rgba(139, 92, 246, 0.18), transparent 28%),
+                linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 48%, var(--bg-3) 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        main {
+            padding-top: 2rem !important;
+        }
+
+        .navbar {
+            background: rgba(7, 11, 20, 0.88) !important;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--line);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.28);
+        }
+
+        .nav-link {
+            font-weight: 600;
+            color: rgba(237, 246, 255, 0.83) !important;
+        }
+
+        .nav-link:hover {
+            color: var(--blue) !important;
+        }
+
+        .card {
+            border: 1px solid var(--line) !important;
+            border-radius: 22px !important;
+            background: linear-gradient(180deg, rgba(18, 25, 39, 0.96), rgba(10, 15, 24, 0.96));
+            box-shadow: var(--shadow);
+            color: var(--text);
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 22px 52px rgba(8, 13, 22, 0.72);
+            border-color: rgba(124, 199, 255, 0.28) !important;
+        }
+
+        .float-card {
+            animation: floatCard 6s ease-in-out infinite;
+        }
+
+        @keyframes floatCard {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .card-header, .card-footer {
+            border-bottom: 1px solid var(--line) !important;
+            border-top: 1px solid var(--line) !important;
+            background: rgba(15, 21, 32, 0.8) !important;
+            color: var(--text);
+        }
+
+        .card-body {
+            color: var(--text);
+        }
+
+        .table {
+            --bs-table-color: var(--text);
+            --bs-table-bg: transparent;
+            --bs-table-striped-color: var(--text);
+            --bs-table-hover-color: var(--text);
+            color: var(--text) !important;
+        }
+
+        .table > :not(caption) > * > * {
+            color: var(--text) !important;
+            background-color: transparent;
+            border-color: rgba(143, 176, 255, 0.2);
+        }
+
+        .table thead th {
+            color: #dfeeff !important;
+        }
+
+        .dataTables_wrapper,
+        .dataTables_wrapper label,
+        .dataTables_info,
+        .dataTables_length,
+        .dataTables_filter {
+            color: var(--muted) !important;
+        }
+
+        .dataTables_wrapper input,
+        .dataTables_wrapper select {
+            color: var(--text) !important;
+            background: rgba(7, 13, 24, 0.9) !important;
+            border: 1px solid rgba(143, 176, 255, 0.2) !important;
+            border-radius: 10px;
+        }
+
+        .btn {
+            border-radius: 12px !important;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.08);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--blue), #4f8ef7);
+            border: none;
+            box-shadow: 0 12px 24px rgba(79, 142, 247, 0.35);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #34d399);
+            border: none;
+            box-shadow: 0 12px 24px rgba(52, 211, 153, 0.25);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, var(--cyan), #38bdf8);
+            border: none;
+        }
+
+        .btn-outline-primary {
+            color: var(--blue);
+            border-color: rgba(124, 199, 255, 0.55);
+            background: rgba(124, 199, 255, 0.04);
+        }
+
+        .form-control, .form-select {
+            border-radius: 12px !important;
+            border: 1px solid rgba(143, 176, 255, 0.18);
+            background: rgba(10, 16, 24, 0.9);
+            color: var(--text);
+            box-shadow: none;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: rgba(94, 234, 212, 0.7);
+            box-shadow: 0 0 0 0.2rem rgba(94, 234, 212, 0.12);
+            background: rgba(10, 16, 24, 0.95);
+            color: var(--text);
+        }
+
+        label, .control-label {
+            color: var(--muted);
+        }
+
+        .alert {
+            border-radius: 14px;
+            border: 1px solid var(--line);
+        }
+
+        a {
+            color: var(--blue);
+        }
+
+        a:hover {
+            color: var(--cyan);
+        }
+
         .modal-sub-footer {
             display: flex;
             flex-wrap: wrap;
@@ -33,15 +219,61 @@
             align-items: center;
             justify-content: flex-end;
             padding: 0.75rem;
-            border-top: 1px solid #dee2e6;
+            border-top: 1px solid var(--line);
             border-bottom-right-radius: calc(0.3rem - 1px);
             border-bottom-left-radius: calc(0.3rem - 1px);
         }
-        
+
+        .global-ai-button {
+            position: fixed;
+            right: 1.25rem;
+            bottom: 1.25rem;
+            z-index: 1050;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.65rem 1rem 0.65rem 0.7rem;
+            border: 1px solid rgba(94, 234, 212, 0.55);
+            border-radius: 999px;
+            background: rgba(7, 11, 20, 0.94);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.42);
+            color: var(--text);
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .global-ai-button:hover {
+            color: var(--text);
+            border-color: var(--cyan);
+            transform: translateY(-2px);
+        }
+
+        .global-ai-button i {
+            display: grid;
+            place-items: center;
+            width: 2.15rem;
+            height: 2.15rem;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--blue), var(--cyan));
+            color: #06131e;
+        }
+
+        @media (max-width: 575px) {
+            .global-ai-button {
+                right: 0.8rem;
+                bottom: 0.8rem;
+                padding-right: 0.75rem;
+            }
+
+            .global-ai-button span {
+                display: none;
+            }
+        }
+
         #viewer_modal #img-viewer {
             position: relative;
         }
-        
+
         #viewer_modal #img-viewer img {
             position: absolute;
             width: 100%;
@@ -91,6 +323,12 @@
 
         </div>
     </main>
+    {% if request.user.is_authenticated and request.resolver_match.url_name != 'travel-chat' %}
+    <a href="{% url 'travel-chat' %}" class="global-ai-button" aria-label="Open AI Travel Assistant">
+        <i class="fas fa-robot"></i>
+        <span>Travel Assistant</span>
+    </a>
+    {% endif %}
     {% block ScriptBlock %} {% endblock ScriptBlock %}
     <div class="modal fade" id="uni_modal" role='dialog'>
         <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable" role="document">

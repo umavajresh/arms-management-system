@@ -12,6 +12,8 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('',views.landing_page, name='public-page'),
     path('search_flight',views.search_flight, name='search-flight'),
+    path('flight_tracker', views.flight_tracker, name='flight-tracker'),
+    path('flight_tracking_api', views.flight_tracking_api, name='flight-tracking-api'),
     path('search_result',views.search_result, name="search-result"),
     path('search_result/<int:fromA>/<int:toA>/<str:departure>',views.search_result, name="search-result-with-params"),
     path('reserve_form/<int:pk>',views.reserve_form,name='reserve-form'),
@@ -64,6 +66,10 @@ urlpatterns = [
     # Notification URLs
     path('mark_notification_read',views.mark_notification_read,name='mark-notification-read'),
     
+    # Chatbot URLs
+    path('travel_chat', views.travel_chat, name='travel-chat'),
+    path('travel_chat_api', views.travel_chat_api, name='travel-chat-api'),
+
     # Password reset URLs
     path('forgot-password/', views_password_reset.forgot_password, name='forgot-password'),
     path('verify-identity/', views_password_reset.verify_identity, name='verify-identity'),

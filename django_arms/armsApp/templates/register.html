@@ -1,124 +1,96 @@
 {% extends 'base.html' %}{% load static %}{% block pageContent %}
 <style>
-    body{
-        background-image:url('{% static "assets/default/img/wallpaper.jpg" %}');
-        background-repeat:no-repeat;
-        background-size:cover;
+    body {
+        background:
+            radial-gradient(circle at top, rgba(124, 199, 255, 0.18), transparent 25%),
+            linear-gradient(135deg, #070b14 0%, #0d1524 50%, #111827 100%);
     }
-    main {
-        min-height: 100vh;
-        width: 100%;
-        padding-top: 80px; /* Account for fixed navbar */
-        padding-bottom: 2rem;
-        overflow-y: auto;
-    }
+
     .registration-container {
         display: flex;
         justify-content: center;
         align-items: flex-start;
-        min-height: calc(100vh - 100px); /* Account for navbar and padding */
+        min-height: calc(100vh - 100px);
         padding: 1rem 0;
     }
+
     .card-registration {
-        max-height: none;
-        overflow-y: visible;
-        margin: 1rem 0;
+        width: 100%;
+        max-width: 620px;
+        border-radius: 24px !important;
+        border: 1px solid rgba(143, 176, 255, 0.16) !important;
+        background: linear-gradient(180deg, rgba(15, 21, 32, 0.96), rgba(9, 15, 23, 0.96));
+        box-shadow: 0 18px 45px rgba(0,0,0,0.42);
     }
-    .card-body {
-        max-height: none;
-        overflow-y: auto;
+
+    .card-registration .card-header {
+        background: rgba(12, 18, 28, 0.9) !important;
+        border-bottom: 1px solid rgba(143, 176, 255, 0.14);
     }
-    
-    /* Ensure form fields are properly spaced and visible */
+
+    .card-registration .card-title {
+        color: #edf6ff;
+    }
+
     .form-group {
         margin-bottom: 1rem;
     }
-    
-    /* Fix for small screens */
-    @media (max-width: 768px) {
-        main {
-            padding-top: 60px; /* Smaller padding on mobile */
-        }
-        .registration-container {
-            padding: 0.5rem;
-            min-height: calc(100vh - 80px);
-        }
-        .col-lg-5, .col-md-6 {
-            padding: 0 0.5rem;
-        }
-        .card-registration {
-            margin: 0.5rem 0;
-        }
-    }
-    
-    /* Ensure the card doesn't get cut off */
-    .card-registration {
-        width: 100%;
-        box-sizing: border-box;
-    }
-    
-    /* Ensure scrolling works on all browsers */
-    html {
-        scroll-behavior: smooth;
-    }
-    
-    body {
-        overflow-x: hidden;
-        overflow-y: auto;
+
+    .text-muted {
+        color: var(--muted) !important;
     }
 </style>
 <div class="registration-container">
     <div class="row justify-content-center w-100">
         <div class="col-lg-5 col-md-6 col-sm-12 col-xs-12">
-            <div class="card card-default rounded-0 shadow card-registration">
-                <div class="card-header">
-                    <h4 class="card-title"><b>Create New User</b></h4>
+            <div class="card card-registration shadow">
+                <div class="card-header text-center py-4">
+                    <h4 class="card-title mb-0"><b>Create New User</b></h4>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
                 <div class="container-fluid">
-                    <form id="register-user" method="POST" action="" enctype="multipart/form-data">
+                    <form id="register-user" method="POST" action="{% url 'register-user' %}" enctype="multipart/form-data">
                         {% csrf_token %}
                         <div class="mdc-layout-grid">
                             <div class="mdc-layout-grid__inner">
                                 <div class="form-group mb-3">
                                     <label for="first_name" class="control-label">First Name</label>
-                                    <input type="text" class="form-control rounded-0" name="first_name" id="first_name" value="{{ reg_form.data.first_name }}" required="required">
+                                    <input type="text" class="form-control" name="first_name" id="first_name" value="{{ reg_form.data.first_name }}" required="required">
                                 </div>
                                 <div class="form-group mb-3">
                                     <label for="last_name" class="control-label">Last Name</label>
-                                    <input type="text" class="form-control rounded-0" name="last_name" id="last_name" value="{{ reg_form.data.last_name }}" required="required">
+                                    <input type="text" class="form-control" name="last_name" id="last_name" value="{{ reg_form.data.last_name }}" required="required">
                                 </div>
                                 <div class="form-group mb-3">
                                     <label for="email" class="control-label">Email</label>
-                                    <input type="email" class="form-control rounded-0" name="email" id="email" value="{{ reg_form.data.email }}" required="required">
+                                    <input type="email" class="form-control" name="email" id="email" value="{{ reg_form.data.email }}" required="required">
                                 </div>
                                 <div class="form-group mb-3">
                                     <label for="custom_id" class="control-label">User ID</label>
-                                    <input type="text" class="form-control rounded-0" name="custom_id" id="custom_id" value="{{ reg_form.data.custom_id }}" required="required">
+                                    <input type="text" class="form-control" name="custom_id" id="custom_id" value="{{ reg_form.data.custom_id }}" required="required">
                                 </div>
                                 <div class="form-group mb-3">
                                     <label for="mobile" class="control-label">Mobile Number</label>
-                                    <input type="text" class="form-control rounded-0" name="mobile" id="mobile" value="{{ reg_form.data.mobile }}" required="required" pattern="[0-9]+" title="Please enter only numbers">
+                                    <input type="text" class="form-control" name="mobile" id="mobile" value="{{ reg_form.data.mobile }}" required="required" pattern="[0-9]+" title="Please enter only numbers">
                                 </div>
                                 <div class="form-group mb-3">
                                     <label for="username" class="control-label">Username</label>
-                                    <input type="text" class="form-control rounded-0" name="username" id="username" value="{{ reg_form.data.username }}" required="required">
+                                    <input type="text" class="form-control" name="username" id="username" value="{{ reg_form.data.username }}" required="required">
                                 </div>
                                 
-                                <!-- Security Questions Section -->
                                 <div class="form-group mb-3">
-                                    <h5 class="mb-2">Security Information</h5>
-                                    <p class="text-muted small">This information will be used to reset your password if you forget it.</p>
+                                    <h5 class="mb-2 text-white">Security Information</h5>
+                                    <p class="text-muted small mb-0">This information will be used to reset your password if you forget it.</p>
                                 </div>
                                 
                                 <div class="form-group mb-3">
                                     <label for="date_of_birth" class="control-label">Date of Birth</label>
-                                    <input type="date" class="form-control rounded-0" name="date_of_birth" id="date_of_birth" value="{{ reg_form.data.date_of_birth }}" required="required">
+                                    <input type="date" class="form-control" name="date_of_birth" id="date_of_birth" value="{{ reg_form.data.date_of_birth }}" required="required">
                                 </div>
                                 
                                 <div class="form-group mb-3">
                                     <label for="security_question" class="control-label">Security Question</label>
-                                    <select class="form-control rounded-0" name="security_question" id="security_question" required="required">
+                                    <select class="form-control" name="security_question" id="security_question" required="required">
                                         <option value="">Select a security question</option>
                                         <option value="nickname" {% if reg_form.data.security_question == 'nickname' %}selected{% endif %}>What is your nickname?</option>
                                         <option value="pet" {% if reg_form.data.security_question == 'pet' %}selected{% endif %}>What is your pet's name?</option>
@@ -132,19 +104,18 @@
                                 
                                 <div class="form-group mb-3">
                                     <label for="security_answer" class="control-label">Security Answer</label>
-                                    <input type="text" class="form-control rounded-0" name="security_answer" id="security_answer" value="{{ reg_form.data.security_answer }}" required="required">
+                                    <input type="text" class="form-control" name="security_answer" id="security_answer" value="{{ reg_form.data.security_answer }}" required="required">
                                     <small class="form-text text-muted">Remember this answer exactly as you'll need it to reset your password.</small>
                                 </div>
-                                <!-- End Security Questions Section -->
                                 
                                 <div class="form-group mb-3">
                                     <label for="password1" class="control-label">Password</label>
-                                    <input type="password" class="form-control rounded-0" name="password1" id="password1" value="{{ reg_form.data.password1 }}" required="required" minlength="8">
+                                    <input type="password" class="form-control" name="password1" id="password1" required="required" minlength="8">
                                     <small class="form-text text-muted">Password must be at least 8 characters long.</small>
                                 </div>
                                 <div class="form-group mb-3">
                                     <label for="password2" class="control-label">Confirm Password</label>
-                                    <input type="password" class="form-control rounded-0" name="password2" id="password2" value="{{ reg_form.data.password2 }}" required="required">
+                                    <input type="password" class="form-control" name="password2" id="password2" required="required">
                                     <div id="password-match-feedback" class="invalid-feedback">Passwords do not match.</div>
                                 </div>
                                 
@@ -155,13 +126,9 @@
                                 </div>
                                 {% endfor %} {% endfor %}
                                 <div class="form-group mb-3">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <a href="{% url 'login-page' %}" class=" col-auto">
-                                            Already have an Account
-                                        </a>
-                                        <button class="btn btn-sm rounded-0 btn-primary col-6">
-                                            Create Account
-                                        </button>
+                                    <div class="d-flex w-100 justify-content-between align-items-center">
+                                        <a href="{% url 'login-page' %}">Already have an Account</a>
+                                        <button class="btn btn-primary px-4">Create Account</button>
                                     </div>
                                 </div>
                             </div>
@@ -176,11 +143,9 @@
 {% block ScriptBlock %}
 <script>
     $(function() {
-        // Real-time password matching validation
         $('#password2').on('input', function() {
             var pass1 = $('#password1').val();
             var pass2 = $(this).val();
-            
             if (pass2 !== "" && pass1 !== pass2) {
                 $(this).addClass('is-invalid');
                 $('#password-match-feedback').show();
@@ -189,12 +154,11 @@
                 $('#password-match-feedback').hide();
             }
         });
-        
+
         $('#password1').on('input', function() {
             if ($('#password2').val() !== "") {
                 var pass1 = $(this).val();
                 var pass2 = $('#password2').val();
-                
                 if (pass1 !== pass2) {
                     $('#password2').addClass('is-invalid');
                     $('#password-match-feedback').show();
@@ -204,20 +168,57 @@
                 }
             }
         });
-        
-        // Custom validation function
-        function validateForm(_this) {
-            var isValid = true;
-            var errorMsg = "";
-            
-            // Check if passwords match
-            var pass1 = $('#password1').val();
-            var pass2 = $('#password2').val();
-            if (pass1 !== pass2) {
-                errorMsg += "Passwords do not match.<br>";
-                isValid = false;
+
+        $('#register-user').on('submit', function(event) {
+            event.preventDefault();
+            var form = this;
+            var errorBox = $('#form-errors');
+            errorBox.hide().text('').removeClass('alert-success').addClass('alert-danger');
+
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
             }
-            
+
+            if ($('#password1').val() !== $('#password2').val()) {
+                errorBox.text('Passwords do not match.').show();
+                return;
+            }
+
+            start_loader();
+            $.ajax({
+                url: form.action,
+                method: 'POST',
+                data: new FormData(form),
+                processData: false,
+                contentType: false,
+                dataType: 'json',
+                headers: {
+                    'X-CSRFToken': $(form).find('[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response && response.status === 'success') {
+                        errorBox.removeClass('alert-danger').addClass('alert-success')
+                            .text(response.msg || 'Account created. Redirecting to login...').show();
+                        setTimeout(function() {
+                            location.href = "{% url 'login-page' %}";
+                        }, 1200);
+                    } else {
+                        errorBox.text((response && response.msg) || 'Please check your account details and try again.').show();
+                    }
+                },
+                error: function() {
+                    errorBox.text('Account creation failed. Please try again.').show();
+                },
+                complete: function() {
+                    end_loader();
+                }
+            });
+        });
+    });
+</script>
+{% endblock ScriptBlock %}
+{% comment %}
             // Check if User ID is provided
             var customId = $('#custom_id').val();
             if (!customId || customId.trim() === '') {
@@ -361,4 +362,4 @@
         })
     })
 </script>
-{% endblock ScriptBlock %}
+{% endcomment %}

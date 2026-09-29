@@ -129,7 +129,6 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-STATIC_URL = 'static/'
 STATICFILES_DIRS = [ 
     BASE_DIR / "static",
     ]
@@ -141,7 +140,4 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 LOGIN_REDIRECT_URL = '/'
 LOGIN_URL = '/login'
-
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-
-
+SESSION_COOKIE_AGE = 60 * 60 * 24

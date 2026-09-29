@@ -5,6 +5,9 @@ from django.utils import timezone
 from django.db.models import Count, Sum, Q
 from datetime import timedelta, datetime
 from armsApp.models import Flights, Airlines, Airport, Reservation, FlightSchedule, Aircraft
+import logging
+
+logger = logging.getLogger(__name__)
 
 class UpcomingFlightsAdminView:
     """
@@ -39,12 +42,13 @@ class UpcomingFlightsAdminView:
             try:
                 today = datetime.strptime(date_from, '%Y-%m-%d').date()
             except ValueError:
-                pass
+                logger.debug("Invalid date_from provided: %s", date_from)
                 
         if date_to:
             try:
                 end_date = datetime.strptime(date_to, '%Y-%m-%d').date()
             except ValueError:
+                logger.debug("Invalid date_to provided: %s", date_to)
                 end_date = today + timedelta(days=days)
         else:
             end_date = today + timedelta(days=days)

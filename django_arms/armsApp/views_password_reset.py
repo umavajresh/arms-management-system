@@ -7,6 +7,9 @@ from django.http import HttpResponse
 from django.utils import timezone
 from armsApp import models, forms
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Add the new password reset views
 def forgot_password(request):
@@ -35,7 +38,7 @@ def forgot_password(request):
                 profile = UserProfile.objects.get(custom_id=username)
                 user = profile.user
             except UserProfile.DoesNotExist:
-                pass
+                logger.debug("UserProfile not found for custom_id: %s", username)
         
         if not user:
             messages.error(request, "No account found with that username or ID")

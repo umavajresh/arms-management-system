@@ -50,10 +50,16 @@
                             <a class="nav-link" aria-current="page" href="{% url 'flight-page' %}">Flight</a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" aria-current="page" href="{% url 'flight-tracker' %}">Live Tracker</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" aria-current="page" href="/admin/upcoming-flights/">Upcoming Flights</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" aria-current="page" href="{% url 'reservation' %}">Reservation</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" aria-current="page" href="{% url 'travel-chat' %}">AI Assistant</a>
                         </li>
                         {% else %}
                         <!-- Regular User Navigation -->
@@ -64,10 +70,16 @@
                             <a class="nav-link" aria-current="page" href="{% url 'search-flight' %}">Search Flights</a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" aria-current="page" href="{% url 'flight-tracker' %}">Live Tracker</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" aria-current="page" href="{% url 'upcoming-flights' %}">Upcoming Flights</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" aria-current="page" href="{% url 'user-reservations' %}">My Bookings</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" aria-current="page" href="{% url 'travel-chat' %}">AI Travel Assistant</a>
                         </li>
                         {% endif %}
                     {% endif %}

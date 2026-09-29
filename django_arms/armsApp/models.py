@@ -7,6 +7,9 @@ import qrcode
 from PIL import Image
 from django.contrib.auth.models import User
 from datetime import timedelta, datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # Create your models here.
@@ -29,8 +32,8 @@ class Airlines(models.Model):
 
     def save(self, *args, **kwargs):
         super(Airlines, self).save(*args, **kwargs)
-        print(self.image_path)
-        if not self.image_path == '':
+        logger.debug("Saving airline image: %s", self.image_path)
+        if self.image_path and self.image_path.name and self.image_path.storage.exists(self.image_path.name):
             imag = Image.open(self.image_path.path)
             width = imag.width
             height = imag.height

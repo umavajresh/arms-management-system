@@ -1,10 +1,11 @@
 {% extends 'base.html' %}{% load static %}{% block pageContent %}
 <style>
-    body{
-        background-image:url('{% static "assets/default/img/wallpaper.jpg" %}');
-        background-repeat:no-repeat;
-        background-size:cover;
+    body {
+        background:
+            radial-gradient(circle at top, rgba(124, 199, 255, 0.18), transparent 25%),
+            linear-gradient(135deg, #070b14 0%, #0d1524 50%, #111827 100%);
     }
+
     main {
         height: 100%;
         width: 100%;
@@ -13,18 +14,40 @@
         justify-content: center;
         overflow: auto;
     }
-    #logo-img{
+
+    #logo-img {
         height: 11em;
         width: 26em;
     }
+
+    .login-shell {
+        width: min(100%, 430px);
+    }
+
+    .login-card {
+        background: linear-gradient(180deg, rgba(15, 21, 32, 0.96), rgba(10, 16, 24, 0.96));
+        border: 1px solid rgba(143, 176, 255, 0.2);
+        border-radius: 22px;
+        box-shadow: 0 18px 45px rgba(0,0,0,0.5);
+    }
+
+    .login-card .card-header {
+        background: rgba(13, 18, 28, 0.95) !important;
+        border-bottom: 1px solid rgba(143, 176, 255, 0.14);
+    }
+
+    .login-card .card-title {
+        color: #edf6ff;
+        letter-spacing: 0.04em;
+    }
 </style>
-<div class="d-flex flex-column w-100 justify-content-center align-items-center">
-    <div class="col-lg-4 col-md-6 col-sm-12 col-xs-12">
-        <div class="card card-default rounded-0 shadow">
-            <div class="card-header">
-                <h4 class="card-title"><b>Login</b></h4>
+<div class="d-flex flex-column w-100 justify-content-center align-items-center py-5">
+    <div class="login-shell">
+        <div class="card login-card shadow">
+            <div class="card-header text-center py-4">
+                <h4 class="card-title mb-0"><b>Login</b></h4>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 <div class="container-fluid">
                     <form id="login-user" action="" method="POST">
                         {% csrf_token %}
@@ -32,18 +55,18 @@
                             <div class="mdc-layout-grid__inner">
                                 <div class="form-group mb-3">
                                     <label for="username" class="control-label">User ID</label>
-                                    <input type="text" class="form-control rounded-0" autofocus name="username" id="username" required="required" placeholder="Enter your User ID or Username">
+                                    <input type="text" class="form-control" autofocus name="username" id="username" required="required" placeholder="Enter your User ID or Username">
                                 </div>
                                 <div class="form-group mb-3">
                                     <label for="password" class="control-label">Password</label>
-                                    <input type="password" class="form-control rounded-0" name="password" id="password" required="required">
+                                    <input type="password" class="form-control" name="password" id="password" required="required" placeholder="Enter your password">
                                 </div>
                                 <div class="form-group mb-3">
                                     <div class="d-flex w-100 justify-content-between align-items-center">
-                                        <div class="col-md-4">
+                                        <div>
                                             <a href="{% url 'public-page' %}">Go Back</a>
                                         </div>
-                                        <button class="btn btn-sm rounded-0 btn-primary">
+                                        <button class="btn btn-primary px-4">
                                             Login
                                         </button>
                                     </div>

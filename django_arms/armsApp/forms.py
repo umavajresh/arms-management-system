@@ -5,6 +5,9 @@ from armsApp import models
 import qrcode
 from django.contrib.auth.forms import UserCreationForm,PasswordChangeForm, UserChangeForm
 from django.contrib.auth.models import User
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SaveUser(UserCreationForm):
     username = forms.CharField(max_length=250,help_text="The Username field is required.")
@@ -47,7 +50,7 @@ class SaveUser(UserCreationForm):
             if profile:
                 raise forms.ValidationError("User ID is already taken")
         except Exception as e:
-            print(f"Error checking custom_id: {str(e)}")
+            logger.exception("Error checking custom_id")
             # Don't suppress unexpected exceptions
             if "DoesNotExist" not in str(e) and "no such table" not in str(e):
                 raise e

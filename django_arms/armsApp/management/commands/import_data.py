@@ -5,6 +5,7 @@ from django.conf import settings
 from armsApp.models import Airlines, Airport, Aircraft, Flights
 from django.utils import timezone
 from datetime import datetime
+from django.utils import timezone as dj_timezone
 
 class Command(BaseCommand):
     help = 'Import data from CSV files into the database'
@@ -53,7 +54,7 @@ class Command(BaseCommand):
                             defaults={
                                 'name': row['name'],
                                 'country': row['country'],
-                                'status': row['status']
+                                'status': row.get('status', '1')
                             }
                         )
                         if created:
@@ -80,7 +81,7 @@ class Command(BaseCommand):
                         'name': row['name'],
                         'city': row['city'],
                         'country': row['country'],
-                        'status': row['status']
+                        'status': row.get('status', '1')
                     }
                 )
                 if created:
@@ -113,6 +114,33 @@ class Command(BaseCommand):
     def import_flights(self, file_path):
         self.stdout.write('Importing Flights with price information...')
         count = 0
+
+        def ensure_airline(code):
+            airline, _ = Airlines.objects.get_or_create(
+                code=code,
+                defaults={'name': code, 'country': 'Unknown'}
+            )
+            return airline
+
+        def ensure_airport(code):
+            airport, _ = Airport.objects.get_or_create(
+                code=code,
+                defaults={'name': code, 'city': 'Unknown', 'country': 'Unknown'}
+            )
+            return airport
+
+        def ensure_aircraft(code):
+            aircraft, _ = Aircraft.objects.get_or_create(
+                code=code,
+                defaults={
+                    'model': code,
+                    'manufacturer': 'Unknown',
+                    'business_capacity': 0,
+                    'economy_capacity': 0,
+                    'status': '1'
+                }
+            )
+            return aircraft
         
         try:
             with open(file_path, 'r') as csvfile:
@@ -120,14 +148,18 @@ class Command(BaseCommand):
                 for row in reader:
                     try:
                         # Get related objects
-                        airline = Airlines.objects.get(code=row['airline_code'])
-                        from_airport = Airport.objects.get(code=row['from_airport_code'])
-                        to_airport = Airport.objects.get(code=row['to_airport_code'])
-                        aircraft = Aircraft.objects.get(code=row['aircraft_code'])
+                        airline = ensure_airline(row['airline_code'])
+                        from_airport = ensure_airport(row['from_airport_code'])
+                        to_airport = ensure_airport(row['to_airport_code'])
+                        aircraft = ensure_aircraft(row['aircraft_code'])
                         
                         # Parse dates
                         departure = datetime.fromisoformat(row['departure'])
                         arrival = datetime.fromisoformat(row['estimated_arrival'])
+                        if departure.tzinfo is None:
+                            departure = dj_timezone.make_aware(departure)
+                        if arrival.tzinfo is None:
+                            arrival = dj_timezone.make_aware(arrival)
                         
                         # Create or update flight
                         flight, created = Flights.objects.update_or_create(
@@ -143,7 +175,6 @@ class Command(BaseCommand):
                                 'economy_price': float(row['economy_price']),
                                 'business_class_slots': aircraft.business_capacity,
                                 'economy_slots': aircraft.economy_capacity,
-                                'status': '1',  # Set as active by default
                                 'delete_flag': 0
                             }
                         )

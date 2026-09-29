@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block pageContent %}
+<style>
+    .chat-shell {
+        border: 1px solid rgba(143, 176, 255, 0.2) !important;
+        background: #0b1220;
+    }
+
+    .chat-shell .card-header {
+        background: #101a2b !important;
+        border-bottom: 1px solid rgba(143, 176, 255, 0.2) !important;
+    }
+
+    .chat-body {
+        background: #e9eef5 !important;
+    }
+
+    .chat-message {
+        color: #162235;
+        background: #ffffff;
+        border: 1px solid #d3dce8 !important;
+    }
+
+    .chat-message.user-message {
+        color: #ffffff;
+        background: #1769e0;
+        border-color: #1769e0 !important;
+    }
+
+    .chat-composer {
+        background: #101a2b !important;
+        border-top: 1px solid rgba(143, 176, 255, 0.2) !important;
+    }
+
+    .chat-composer .form-control {
+        color: #edf6ff;
+        background: #070d18;
+    }
+
+    .chat-composer .form-control::placeholder {
+        color: #91a1b8;
+        opacity: 1;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card chat-shell shadow border-0 rounded-4 overflow-hidden">
+                <div class="card-header bg-primary text-white py-3">
+                    <h3 class="mb-0"><i class="fas fa-robot me-2"></i>AI Travel Assistant</h3>
+                </div>
+                <div class="card-body chat-body p-0">
+                    <div id="chat-window" class="p-3" style="min-height: 400px; max-height: 520px; overflow-y: auto;">
+                        <div class="d-flex justify-content-start mb-3">
+                            <div class="chat-message rounded-3 px-3 py-2 shadow-sm" style="max-width: 80%;">
+                                Hello! I can help with budget-friendly destinations, trip lengths, route ideas, and flight suggestions.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-composer border-top p-3">
+                        <form id="chat-form">
+                            {% csrf_token %}
+                            <div class="input-group">
+                                <input type="text" id="chat-message" class="form-control form-control-lg" placeholder="Ask: Where should I travel this month? or My budget is ₹12,000 for 3 days..." autocomplete="off" required>
+                                <button type="submit" class="btn btn-primary btn-lg">Send</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock pageContent %}
+
+{% block ScriptBlock %}
+<script>
+(function() {
+    const chatWindow = document.getElementById('chat-window');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-message');
+
+    function addMessage(content, isUser = false) {
+        const wrapper = document.createElement('div');
+        wrapper.className = `d-flex mb-3 ${isUser ? 'justify-content-end' : 'justify-content-start'}`;
+
+        const bubble = document.createElement('div');
+        bubble.className = `chat-message rounded-3 px-3 py-2 shadow-sm ${isUser ? 'user-message' : ''}`;
+        bubble.style.maxWidth = '80%';
+        bubble.style.whiteSpace = 'pre-line';
+        bubble.textContent = content;
+        wrapper.appendChild(bubble);
+        chatWindow.appendChild(wrapper);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    chatForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        addMessage(message, true);
+        chatInput.value = '';
+
+        fetch('{% url "travel-chat-api" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: new URLSearchParams({ message: message })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                addMessage(data.response, false);
+            } else {
+                addMessage(data.message || 'Something went wrong.', false);
+            }
+        })
+        .catch(() => {
+            addMessage('I could not process that request right now. Please try again.', false);
+        });
+    });
+})();
+</script>
+{% endblock ScriptBlock %}

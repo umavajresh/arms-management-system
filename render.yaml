@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: django-arms-web
+    env: python
+    rootDir: django_arms
+    plan: starter
+    region: oregon
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt && python manage.py collectstatic --noinput
+    startCommand: gunicorn django_arms.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: SECRET_KEY
+        fromDatabase: false
+        sync: false
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "*"
+      - key: DATABASE_URL
+        fromDatabase: false
+        sync: false
+    gitHub:
+      repo: umavajresh/arms-management-system
+      branch: main

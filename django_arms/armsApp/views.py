@@ -1,19 +1,35 @@
+403
 import datetime
+import os
+import requests
 from django.shortcuts import redirect, render
 import json
 from django.contrib import messages
 from django.contrib.auth.models import User
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from armsApp import models, forms
-
+from django.http import HttpResponse
 from django.db.models import Q, Min, Max
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 
+import json
+
+from django.http import HttpResponse
+from django.shortcuts import render, redirect
 
 
 from armsApp.utils import context_data
+from armsApp.ai_chatbot import (
+    get_travel_response,
+    extract_travel_preferences,
+    search_real_flights,
+)
+import logging
+
+logger = logging.getLogger(__name__)
     
 @login_required
 def update_reservation(request):
@@ -60,7 +76,7 @@ def landing_page(request):
                 )
                 return redirect("user-dashboard")
         except Exception as e:
-            print(f"Error in landing page: {e}")
+            logger.exception("Error in landing page")
             # Default to user dashboard on error
             return redirect("user-dashboard")
     
@@ -288,12 +304,12 @@ def seat_selection(request, pk=None):
                 # Redirect to reservation form
                 return redirect('reserve-form', pk=pk)
             except Exception as e:
-                print(f"Redirect error: {str(e)}")
+                logger.exception("Redirect error during seat selection")
                 messages.error(request, f"Error during redirect: {str(e)}")
                 return render(request, 'seat_selection.html', context)
             
         except Exception as e:
-            print(f"Seat selection error: {str(e)}")
+            logger.exception("Seat selection error")
             messages.error(request, f"An error occurred: {str(e)}")
             return render(request, 'seat_selection.html', context)
 
@@ -321,9 +337,6 @@ def save_register(request):
             resp['msg'] = "No data has been sent on this request"
             return HttpResponse(json.dumps(resp), content_type="application/json")
         
-        # Log form data for debugging (remove sensitive data in production)
-        print(f"Form Data: {request.POST}")
-        
         # Explicitly check if required fields are in request.POST
         required_fields = ['custom_id', 'mobile', 'username', 'email', 'first_name', 'last_name', 'password1', 'password2']
         missing_fields = [field for field in required_fields if field not in request.POST or not request.POST.get(field)]
@@ -342,77 +355,29 @@ def save_register(request):
         
         if form.is_valid():
             try:
-                # First save the User object
-                user = form.save()
-                
-                # Get the cleaned data
-                custom_id = form.cleaned_data.get('custom_id')
-                mobile = form.cleaned_data.get('mobile')
-                
-                # Then create the UserProfile - handle potential database issues
-                try:
-                    # Try to fix the UserProfile table if it doesn't exist
-                    from django.db import connection
-                    with connection.cursor() as cursor:
-                        cursor.execute("""
-                        CREATE TABLE IF NOT EXISTS "armsApp_userprofile" (
-                            "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-                            "custom_id" varchar(50) NOT NULL UNIQUE,
-                            "mobile" varchar(20) NOT NULL,
-                            "is_admin" bool NOT NULL,
-                            "date_added" datetime NOT NULL,
-                            "date_updated" datetime NOT NULL,
-                            "user_id" integer NOT NULL UNIQUE REFERENCES "auth_user" ("id") ON DELETE CASCADE,
-                            "user_type" varchar(10) NOT NULL,
-                            "security_question" varchar(50) NULL,
-                            "security_answer" varchar(255) NULL,
-                            "date_of_birth" date NULL
-                        );
-                        """)
-                        
-                    # Now create the profile
-                    from armsApp.models import UserProfile
-                    
-                    # Get security question fields
-                    security_question = form.cleaned_data.get('security_question')
-                    security_answer = form.cleaned_data.get('security_answer', '').lower()  # Store in lowercase
-                    date_of_birth = form.cleaned_data.get('date_of_birth')
-                    
+                from armsApp.models import UserProfile
+
+                with transaction.atomic():
+                    user = form.save()
                     profile = UserProfile.objects.create(
                         user=user,
-                        custom_id=custom_id,
-                        mobile=mobile,
-                        is_admin=False,  # Default to regular user
-                        user_type='user',  # Explicitly set as regular user
-                        security_question=security_question,
-                        security_answer=security_answer,
-                        date_of_birth=date_of_birth,
-                        date_added=timezone.now(),
-                        date_updated=timezone.now()
+                        custom_id=form.cleaned_data['custom_id'],
+                        mobile=form.cleaned_data['mobile'],
+                        is_admin=False,
+                        user_type='user',
+                        security_question=form.cleaned_data['security_question'],
+                        security_answer=form.cleaned_data['security_answer'],
+                        date_of_birth=form.cleaned_data['date_of_birth'],
                     )
-                    
-                    messages.success(request, "Your Account has been created successfully")
-                    resp['status'] = 'success'
-                    resp['msg'] = "Registration successful! Redirecting to login page."
-                except Exception as profile_error:
-                    # If creating the profile fails, delete the user and report the error
-                    user.delete()
-                    import traceback
-                    print(f"Profile creation error: {str(profile_error)}")
-                    print(traceback.format_exc())
-                    resp['msg'] = f"Error creating user profile: {str(profile_error)}"
-                    
-            except Exception as e:
-                # If an error occurs, delete the user if it was created
-                if 'user' in locals():
-                    user.delete()
-                resp['msg'] = f"An error occurred: {str(e)}"
-                # Log the full exception for debugging
-                import traceback
-                print(f"Registration error: {str(e)}")
-                print(traceback.format_exc())
+            except Exception:
+                logger.exception("Registration error during save_register")
+                resp['msg'] = "Your account could not be saved. Please check your details and try again."
+            else:
+                messages.success(request, "Your Account has been created successfully")
+                resp['status'] = 'success'
+                resp['msg'] = "Registration successful! Redirecting to login page."
         else:
-            print(f"Form errors: {form.errors}")
+            logger.debug("Form errors: %s", form.errors)
             error_messages = []
             for field_name, error_list in form.errors.items():
                 for error in error_list:
@@ -421,12 +386,9 @@ def save_register(request):
             resp['msg'] = "<br>".join(error_messages)
             if not resp['msg']:
                 resp['msg'] = "Form validation failed. Please check all fields and try again."
-    except Exception as e:
-        # Catch any unexpected exceptions
-        import traceback
-        print(f"Unexpected error in save_register: {str(e)}")
-        print(traceback.format_exc())
-        resp['msg'] = f"An unexpected error occurred: {str(e)}"
+    except Exception:
+        logger.exception("Unexpected error in save_register")
+        resp['msg'] = "An unexpected error occurred. Please try again."
     
     # Ensure the return statement is always executed
     return HttpResponse(json.dumps(resp), content_type="application/json")
@@ -506,27 +468,22 @@ def login_page(request):
     return render(request, 'login.html', context)
 
 def login_user(request):
-    logout(request)
     resp = {"status":'failed','msg':'', 'redirect': ''}
-    username = ''
-    password = ''
-    if request.POST:
-        username = request.POST['username']
-        password = request.POST['password']
+    if request.method == 'POST':
+        username = (request.POST.get('username') or '').strip()
+        password = request.POST.get('password') or ''
 
-        # Check if username is actually custom_id
+        if not username or not password:
+            resp['msg'] = "Enter your User ID or username and password"
+            return HttpResponse(json.dumps(resp), content_type='application/json')
+
         from armsApp.models import UserProfile
-        try:
-            profile = UserProfile.objects.get(custom_id=username)
-            user = authenticate(username=profile.user.username, password=password)
-        except:
-            user = authenticate(username=username, password=password)
+        profile = UserProfile.objects.filter(custom_id=username).select_related('user').first()
+        auth_username = profile.user.username if profile else username
+        user = authenticate(request, username=auth_username, password=password)
             
         if user is not None:
             if user.is_active:
-                # Clear any existing session data
-                request.session.flush()
-                
                 login(request, user)
                 resp['status'] = 'success'
                 
@@ -555,6 +512,181 @@ def search_flight(request):
     context['airports'] = airports
     
     return render(request,'search_flight.html', context)
+
+def _flight_tracking_data(flight, current_time=None):
+    current_time = current_time or timezone.now()
+    departure = flight.departure
+    arrival = flight.estimated_arrival
+    total_seconds = max((arrival - departure).total_seconds(), 1)
+
+    if current_time < departure - datetime.timedelta(hours=2):
+        status = 'Scheduled'
+        progress = 0
+    elif current_time < departure:
+        status = 'Boarding'
+        progress = 0
+    elif current_time < arrival:
+        status = 'In flight'
+        progress = min(99, max(1, round((current_time - departure).total_seconds() / total_seconds * 100)))
+    else:
+        status = 'Landed'
+        progress = 100
+
+    return {
+        'id': flight.id,
+        'code': flight.code,
+        'airline': flight.airline.name,
+        'from_code': flight.from_airport.code,
+        'from_name': flight.from_airport.name,
+        'to_code': flight.to_airport.code,
+        'to_name': flight.to_airport.name,
+        'departure': timezone.localtime(departure).isoformat(),
+        'arrival': timezone.localtime(arrival).isoformat(),
+        'status': status,
+        'progress': progress,
+        'updated_at': timezone.localtime(current_time).isoformat(),
+    }
+
+def _fetch_opensky_flight_data(flight_code):
+    code = (flight_code or '').strip().upper().replace(' ', '')
+    if not code:
+        return None
+
+    try:
+        response = requests.get(
+            'https://opensky-network.org/api/states/all',
+            params={
+                'time': int(timezone.now().timestamp()),
+            },
+            timeout=15,
+        )
+        response.raise_for_status()
+        payload = response.json() or {}
+        states = payload.get('states') or []
+
+        for state in states:
+            if len(state) < 2:
+                continue
+            callsign = (state[1] or '').strip().upper().replace(' ', '')
+            if not callsign or callsign != code and not callsign.startswith(code):
+                continue
+
+            latitude = state[6]
+            longitude = state[5]
+            if latitude is None or longitude is None:
+                continue
+
+            velocity = state[9]
+            altitude = state[7]
+            return {
+                'flight_code': code,
+                'airline': 'OpenSky Network',
+                'from_code': '',
+                'from_name': 'Live airspace position',
+                'to_code': '',
+                'to_name': 'Live tracking data',
+                'departure': None,
+                'arrival': None,
+                'status': 'Live airborne',
+                'latitude': latitude,
+                'longitude': longitude,
+                'altitude': altitude,
+                'speed_horizontal': velocity,
+                'updated_at': timezone.now().isoformat(),
+                'source': 'opensky',
+                'progress': 50,
+            }
+    except requests.RequestException:
+        logger.exception('OpenSky live flight lookup failed for %s', flight_code)
+    except ValueError:
+        logger.exception('OpenSky returned invalid JSON for %s', flight_code)
+
+    return None
+
+
+def _fetch_live_flight_data(flight_code):
+    api_key = os.getenv('AVIATIONSTACK_API_KEY')
+    if api_key:
+        try:
+            response = requests.get(
+                'http://api.aviationstack.com/v1/flights',
+                params={
+                    'access_key': api_key,
+                    'flight_iata': flight_code,
+                },
+                timeout=10,
+            )
+            response.raise_for_status()
+            payload = response.json() or {}
+            records = payload.get('data') or []
+            if records:
+                item = records[0]
+                flight = item.get('flight') or {}
+                airline = item.get('airline') or {}
+                departure = item.get('departure') or {}
+                arrival = item.get('arrival') or {}
+                live = item.get('live') or {}
+
+                flight_code_value = (flight.get('iata') or flight.get('icao') or flight_code or '').upper()
+                departure_time = departure.get('scheduled') or departure.get('estimated') or departure.get('actual')
+                arrival_time = arrival.get('scheduled') or arrival.get('estimated') or arrival.get('actual')
+                updated_time = live.get('updated') or timezone.now().isoformat()
+
+                return {
+                    'flight_code': flight_code_value,
+                    'airline': airline.get('name') or 'Unknown airline',
+                    'from_code': (departure.get('iata') or departure.get('icao') or '').upper(),
+                    'from_name': departure.get('airport') or 'Unknown origin',
+                    'to_code': (arrival.get('iata') or arrival.get('icao') or '').upper(),
+                    'to_name': arrival.get('airport') or 'Unknown destination',
+                    'departure': departure_time,
+                    'arrival': arrival_time,
+                    'status': item.get('flight_status') or item.get('status') or 'Unknown',
+                    'latitude': live.get('latitude'),
+                    'longitude': live.get('longitude'),
+                    'altitude': live.get('altitude'),
+                    'speed_horizontal': live.get('speed_horizontal'),
+                    'updated_at': updated_time,
+                    'source': 'aviationstack',
+                }
+        except requests.RequestException:
+            logger.exception('AviationStack live flight lookup failed for %s', flight_code)
+        except ValueError:
+            logger.exception('AviationStack returned invalid JSON for %s', flight_code)
+
+    return _fetch_opensky_flight_data(flight_code)
+
+
+def flight_tracker(request):
+    context = context_data()
+    context['page_title'] = 'Live Flight Tracker'
+    context['tracked_code'] = request.GET.get('flight', '').strip()
+    current_time = timezone.now()
+    context['recent_flights'] = models.Flights.objects.filter(
+        delete_flag=0,
+        estimated_arrival__gte=current_time - datetime.timedelta(days=1),
+        departure__lte=current_time + datetime.timedelta(days=7),
+    ).select_related('from_airport', 'to_airport').order_by('departure')[:8]
+    return render(request, 'flight_tracker.html', context)
+
+
+def flight_tracking_api(request):
+    code = request.GET.get('flight', '').strip()
+    if not code:
+        return JsonResponse({'error': 'Enter a flight code to track.'}, status=400)
+
+    live_data = _fetch_live_flight_data(code)
+    if live_data:
+        return JsonResponse({'flight': live_data})
+
+    try:
+        flight = models.Flights.objects.select_related(
+            'airline', 'from_airport', 'to_airport'
+        ).get(code__iexact=code, delete_flag=0)
+    except models.Flights.DoesNotExist:
+        return JsonResponse({'error': 'No active flight was found with that code.'}, status=404)
+
+    return JsonResponse({'flight': _flight_tracking_data(flight)})
 
 def search_result(request, fromA=None, toA=None, departure = None):
     context = context_data()
@@ -895,7 +1027,7 @@ def reserve_form(request, pk=None):
                         return redirect('seat-selection', pk=pk)
                         
                 except (json.JSONDecodeError, KeyError) as e:
-                    print(f"Error parsing seat selection data: {e}")
+                    logger.exception("Error parsing seat selection data")
                     messages.error(request, "Invalid seat selection data. Please select seats again.")
                     return redirect('seat-selection', pk=pk)
                     
@@ -914,21 +1046,21 @@ def reserve_form(request, pk=None):
                 else:
                     context['seat_price'] = context['flight'].economy_price
                     
-                print(f"Single-passenger context prepared: seat={selected_seat}, class={seat_class}, price={context.get('seat_price')}")
+                logger.debug("Single-passenger context prepared: seat=%s, class=%s, price=%s", selected_seat, seat_class, context.get('seat_price'))
             else:
                 # No valid seat selection found
                 messages.warning(request, "Please select seats first")
                 return redirect('seat-selection', pk=pk)
         else:
             # If no seat selection or flight mismatch, redirect to seat selection
-            print(f"Session data mismatch: expected flight {pk}, got {selected_flight}")
+            logger.debug("Session data mismatch: expected flight %s, got %s", pk, selected_flight)
             messages.warning(request, "Please select seats first")
             return redirect('seat-selection', pk=pk)
             
         try:
             return render(request, 'reservation.html', context)
         except Exception as template_error:
-            print(f"Template rendering error: {str(template_error)}")
+            logger.exception("Template rendering error")
             messages.error(request, f"Error rendering reservation form: {str(template_error)}")
             return redirect('user-dashboard')
             
@@ -959,6 +1091,110 @@ def home(request):
                             departure__hour__gte = hour,
                             ).count()
     return render(request, 'home.html', context)
+
+def travel_chat(request):
+    context = context_data()
+    context['page_title'] = "AI Travel Assistant"
+    context['page'] = 'travel-chat'
+    return render(request, 'travel_chat.html', context)
+
+
+def travel_chat_api(request):
+    """
+    AI Travel Assistant API for ARMS.
+
+    Receives a user's travel question and returns:
+    - AI/fallback travel response
+    - Extracted travel preferences
+    - Real available flights from the ARMS database
+    """
+
+    # ---------------------------------------------------------
+    # 1. Allow only POST requests
+    # ---------------------------------------------------------
+    if request.method != 'POST':
+        return HttpResponse(
+            json.dumps({
+                'status': 'failed',
+                'message': 'Only POST requests are allowed.'
+            }),
+            content_type='application/json',
+            status=405
+        )
+
+    # ---------------------------------------------------------
+    # 2. Get user's message
+    # ---------------------------------------------------------
+    message = request.POST.get('message', '').strip()
+
+    if not message:
+        return HttpResponse(
+            json.dumps({
+                'status': 'failed',
+                'message': 'Please type a travel question first.'
+            }),
+            content_type='application/json',
+            status=400
+        )
+
+    # ---------------------------------------------------------
+    # 3. Extract travel preferences
+    # ---------------------------------------------------------
+    try:
+        prefs = extract_travel_preferences(message)
+    except Exception as e:
+        return HttpResponse(
+            json.dumps({
+                'status': 'failed',
+                'message': 'Unable to understand your travel preferences.',
+                'error': str(e)
+            }),
+            content_type='application/json',
+            status=500
+        )
+
+    # ---------------------------------------------------------
+    # 4. Generate AI travel response
+    # ---------------------------------------------------------
+    try:
+        response = get_travel_response(message)
+    except Exception as e:
+        response = (
+            "I could not generate the AI recommendation right now. "
+            "However, I can still search the available flights for you."
+        )
+
+    # ---------------------------------------------------------
+    # 5. Search REAL flights from ARMS database
+    # ---------------------------------------------------------
+    try:
+        flights = search_real_flights(prefs)
+    except Exception as e:
+        flights = []
+
+    # ---------------------------------------------------------
+    # 6. Build response
+    # ---------------------------------------------------------
+    result = {
+        'status': 'success',
+
+        'response': response,
+
+        'preferences': prefs,
+
+        'flights': flights,
+
+        'flight_count': len(flights),
+    }
+
+    # ---------------------------------------------------------
+    # 7. Return JSON
+    # ---------------------------------------------------------
+    return HttpResponse(
+        json.dumps(result, default=str),
+        content_type='application/json',
+        status=200
+    )
 
 def logout_user(request):
     # Clear all session data and log out the user
@@ -1155,7 +1391,7 @@ def save_flight(request):
                     flight.business_class_slots = aircraft.business_capacity
                     flight.economy_slots = aircraft.economy_capacity
                 except Exception as e:
-                    print(f"Error getting aircraft: {str(e)}")
+                    logger.exception("Error getting aircraft")
             
             flight.save()
             resp['status'] = 'success'
