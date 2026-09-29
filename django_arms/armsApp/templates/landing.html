@@ -2,167 +2,45 @@
 {% load static %}
 
 {% block pageContent %}
-<style>
-    .hero-visual {
-        position: relative;
-        min-height: 520px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .sky-card {
-        position: relative;
-        width: 100%;
-        max-width: 480px;
-        padding: 1.5rem;
-        border-radius: 26px;
-        background: linear-gradient(180deg, rgba(17,24,39,0.95), rgba(9,15,22,0.95));
-        border: 1px solid rgba(143, 176, 255, 0.18);
-        box-shadow: 0 24px 60px rgba(2, 6, 23, 0.72);
-        overflow: hidden;
-    }
-
-    .sky-card::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(circle at top left, rgba(124,199,255,0.18), transparent 30%);
-    }
-
-    .flight-illustration {
-        position: relative;
-        height: 280px;
-        border-radius: 24px;
-        background: linear-gradient(135deg, rgba(124,199,255,0.08), rgba(139,92,246,0.08), rgba(8,14,24,0.92));
-        border: 1px solid rgba(143, 176, 255, 0.14);
-        overflow: hidden;
-        margin-bottom: 1rem;
-    }
-
-    .flight-illustration .sun {
-        position: absolute;
-        width: 90px;
-        height: 90px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(255,255,255,0.9), rgba(94,234,212,0.52) 38%, rgba(124,199,255,0.1) 70%, transparent 100%);
-        top: 18px;
-        right: 35px;
-    }
-
-    .flight-illustration .cloud {
-        position: absolute;
-        height: 26px;
-        border-radius: 999px;
-        background: rgba(255,255,255,0.22);
-        filter: blur(1px);
-    }
-
-    .flight-illustration .cloud.one { width: 120px; top: 52px; left: 35px; }
-    .flight-illustration .cloud.two { width: 150px; top: 88px; left: 200px; }
-    .flight-illustration .cloud.three { width: 100px; top: 122px; left: 90px; }
-
-    .flight-illustration .plane {
-        position: absolute;
-        left: 50%;
-        top: 58%;
-        width: 220px;
-        height: 64px;
-        transform: translate(-50%, -50%) rotate(-8deg);
-        background: linear-gradient(90deg, rgba(255,255,255,0.05), rgba(124,199,255,0.72), rgba(255,255,255,0.08));
-        clip-path: polygon(0 52%, 30% 52%, 42% 22%, 62% 22%, 78% 0, 100% 50%, 78% 100%, 60% 78%, 42% 78%, 30% 48%, 0 48%);
-        box-shadow: 0 0 28px rgba(124,199,255,0.4);
-    }
-
-    .flight-mini-card {
-        position: absolute;
-        min-width: 170px;
-        padding: 0.9rem 1rem;
-        background: rgba(9, 15, 22, 0.8);
-        border: 1px solid rgba(143, 176, 255, 0.14);
-        border-radius: 18px;
-        box-shadow: 0 14px 30px rgba(0,0,0,0.25);
-        backdrop-filter: blur(8px);
-    }
-
-    .flight-mini-card.top {
-        top: 25px;
-        left: -18px;
-        animation: floatCard 6s ease-in-out infinite;
-    }
-
-    .flight-mini-card.bottom {
-        right: -18px;
-        bottom: 20px;
-        animation: floatCard 7s ease-in-out infinite reverse;
-    }
-
-    .landing-kicker {
-        color: var(--cyan);
-        letter-spacing: 0.14em;
-        font-size: 0.72rem;
-        font-weight: 800;
-    }
-
-    .landing-proof {
-        border-top: 1px solid rgba(143, 176, 255, 0.18);
-        padding-top: 1rem;
-    }
-</style>
 
 <div class="container py-5">
-    <div class="row justify-content-center align-items-center g-4">
-        <div class="col-lg-7">
-            <div class="card float-card p-4 p-md-5 border-0" style="background: linear-gradient(135deg, rgba(47,111,237,0.12), rgba(0,194,168,0.08));">
-                <div class="landing-kicker mb-3"><i class="fas fa-compass me-2"></i>FLIGHT DESK / 24-7</div>
-                <div class="d-inline-flex align-items-center px-3 py-2 rounded-pill bg-dark bg-opacity-50 border mb-3">
-                    <span class="me-2 text-info"><i class="fas fa-plane-departure"></i></span>
-                    <span class="fw-bold text-white">AIRLINE RESERVATION SYSTEM</span>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white text-center">
+                    <h1>Welcome to Airline Reservation Management System</h1>
+                    <p class="mb-0">Please choose how you would like to continue</p>
                 </div>
-                <h1 class="display-5 fw-bolder mb-3" style="line-height:1.1; color:#edf6ff;">
-                    Travel smarter.<br>
-                    Book faster.
-                </h1>
-                <p class="lead text-light opacity-75 mb-4">
-                    Search live routes, choose your seat, and keep every trip detail in one calm, clear travel workspace.
-                </p>
-                <div class="d-flex flex-wrap gap-3 mb-4">
-                    <a href="{% url 'login-page' %}?type=user" class="btn btn-primary btn-lg px-4"><i class="fas fa-search me-2"></i>Find a flight</a>
-                    <a href="{% url 'login-page' %}?type=admin" class="btn btn-outline-primary btn-lg px-4">Admin Login</a>
-                </div>
-                <div class="landing-proof d-flex flex-wrap gap-3 text-light small opacity-75">
-                    <span><i class="fas fa-check-circle text-success me-2"></i>Instant flight search</span>
-                    <span><i class="fas fa-check-circle text-success me-2"></i>Smart trip planning</span>
-                    <span><i class="fas fa-check-circle text-success me-2"></i>Secure reservations</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-5">
-            <div class="hero-visual">
-                <div class="flight-mini-card top">
-                    <div class="small text-muted mb-1">Next destination</div>
-                    <div class="fw-bold text-white">Bengaluru → Dubai</div>
-                    <div class="small text-info">12h 30m</div>
-                </div>
-                <div class="sky-card float-card">
-                    <div class="flight-illustration">
-                        <div class="sun"></div>
-                        <div class="cloud one"></div>
-                        <div class="cloud two"></div>
-                        <div class="cloud three"></div>
-                        <div class="plane"></div>
-                    </div>
-                    <div class="text-center">
-                        <div class="small text-muted mb-1">Premium travel lounge</div>
-                        <h2 class="h3 fw-bold mb-2 text-white">Choose your portal</h2>
-                        <p class="text-muted mb-0">Travel smarter with elegant booking tools.</p>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 border-0 shadow">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-user-shield fa-5x mb-3 text-primary"></i>
+                                    <h3>Admin</h3>
+                                    <p>Login to manage airlines, airports, flights, and reservations</p>
+                                    <a href="{% url 'login-page' %}?type=admin" class="btn btn-primary btn-lg w-100">
+                                        Enter as Admin
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 border-0 shadow">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-user fa-5x mb-3 text-success"></i>
+                                    <h3>User</h3>
+                                    <p>Search flights, make reservations, and manage your bookings</p>
+                                    <a href="{% url 'login-page' %}?type=user" class="btn btn-success btn-lg w-100">
+                                        Enter as User
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="flight-mini-card bottom">
-                    <div class="small text-muted mb-1">Booking Health</div>
-                    <div class="fw-bold text-white">98.4% on-time</div>
-                    <div class="small text-success">+24% this week</div>
+                <div class="card-footer text-center">
+                    <p>Don't have an account? <a href="{% url 'register-page' %}">Register here</a></p>
                 </div>
             </div>
         </div>

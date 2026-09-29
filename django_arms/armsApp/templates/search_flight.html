@@ -1,43 +1,22 @@
 {% extends 'base.html' %} {% load static %} {% block pageContent %}
-<style>
-    .flight-search-panel {
-        border-radius: 24px !important;
-        border: 1px solid rgba(143, 176, 255, 0.18) !important;
-        background: linear-gradient(180deg, rgba(18, 25, 39, 0.96), rgba(9, 15, 22, 0.96));
-        box-shadow: 0 20px 44px rgba(0,0,0,0.42);
-    }
-
-    .search-heading {
-        color: white;
-        letter-spacing: 0.04em;
-    }
-
-    .search-divider {
-        border: 0;
-        height: 3px;
-        width: 90px;
-        border-radius: 999px;
-        background: linear-gradient(90deg, var(--blue), var(--cyan));
-    }
-</style>
 <section class="py-4">
     <div class="container">
-        <h3 class="fw-bolder text-center search-heading">Search Flight</h3>
-        <div class="text-center my-3">
-            <hr class="search-divider mx-auto">
-        </div>
+        <h3 class="fw-bolder text-center">Search Flight</h3>
+        <center>
+            <hr class="bg-primary opacity-100" style="height:3px" width="5%">
+        </center>
         <div class="row justify-content-center">
             <div class="col-lg-6 col-md-8 col-sm-12 col-xs-12">
-                <div class="card flight-search-panel">
-                    <div class="card-body p-4">
+                <div class="card rounded-0 shadow">
+                    <div class="card-body">
                         <div class="container-fluid">
                             <form action="" id="search-flight">
                                 <div class="row">
                                     <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                                         <div class="mb-3">
                                             <label for="from_airport" class="control-label">From</label>
-                                            <select type="text" id="from_airport" name="from_airport" class="form-select select2" required>
-                                                <option value="" disabled selected></option>
+                                            <select type="text" id="from_airport" name="from_airport" class="form-select form-select-sm rounded-0 select2" required>
+                                                <option value=""  disabled selected></option>
                                                 {% for airport in airports %}
                                                     <option value="{{airport.id}}">{{airport.name}}</option>
                                                 {% endfor %}
@@ -45,8 +24,8 @@
                                         </div>
                                         <div class="mb-3">
                                             <label for="to_airport" class="control-label">To</label>
-                                            <select type="text" id="to_airport" name="to_airport" class="form-select select2" required>
-                                                <option value="" disabled selected></option>
+                                            <select type="text" id="to_airport" name="to_airport" class="form-select form-select-sm rounded-0 select2" required>
+                                                <option value=""  disabled selected></option>
                                                 {% for airport in airports %}
                                                     <option value="{{airport.id}}">{{airport.name}}</option>
                                                 {% endfor %}
@@ -54,10 +33,10 @@
                                         </div>
                                         <div class="mb-3">
                                             <label for="departure" class="control-label">Departure Date</label>
-                                            <input type="date" id="departure" name="departure" class="form-control" value="" required>
+                                            <input type="date" id="departure" name="departure" class="form-control form-control-sm rounded-0" value="" required>
                                         </div>
                                         <div class="text-center mb-3">
-                                            <button class="btn btn-primary btn-lg w-100"><i class="fa fa-search me-2"></i> Search Flight</button>
+                                            <button class="btn btn-primary bg-gradient-dark btn-lg rounded-pill w-100"><i class="fa fa-search"></i> Search Flight</button>
                                         </div>
                                     </div>
                                 </div>
@@ -75,7 +54,7 @@
         $('.select2').select2({
             placeholder: "Please Select Here",
             width: "100%",
-            containerCssClass: 'form-control'
+            containerCssClass: 'form-control form-control-sm rounded-0'
         })
         $('#search-flight').submit(function(e) {
             e.preventDefault()

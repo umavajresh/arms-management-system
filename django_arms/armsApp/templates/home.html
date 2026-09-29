@@ -1,125 +1,56 @@
 {% extends "base.html" %} {% load humanize %} {% load customfilter %} {% block pageContent %}
-<style>
-    .stats-grid {
-        gap: 1.5rem;
-    }
 
-    .stat-panel {
-        border-radius: 22px !important;
-        border: 1px solid rgba(143, 176, 255, 0.16) !important;
-        background: linear-gradient(180deg, rgba(18, 25, 39, 0.95), rgba(10, 15, 23, 0.96));
-        box-shadow: 0 16px 38px rgba(0,0,0,0.38);
-        min-height: 170px;
-    }
-
-    .stat-panel .card-body {
-        padding: 2rem 1.5rem;
-    }
-
-    .stat-panel h1 {
-        font-size: clamp(2rem, 4vw, 3rem);
-        color: white;
-        margin-bottom: 0.2rem;
-    }
-
-    .stat-panel h3 {
-        color: var(--muted);
-        font-size: 1.15rem;
-        margin: 0;
-    }
-
-    .admin-action {
-        height: 100%;
-        border: 1px solid var(--line);
-        background: rgba(18, 25, 39, 0.72);
-        padding: 1.15rem;
-        border-radius: 16px;
-        color: var(--text);
-        text-decoration: none;
-        display: block;
-        transition: transform 0.2s ease, border-color 0.2s ease;
-    }
-
-    .admin-action:hover {
-        color: var(--text);
-        transform: translateY(-3px);
-        border-color: rgba(94, 234, 212, 0.55);
-    }
-</style>
-
-<section class="py-4">
-    <div class="row stats-grid justify-content-center">
-        <div class="col-lg-4 col-md-6 col-sm-12">
-            <div class="card stat-panel h-100">
-                <div class="card-body">
+<!--Section: Content-->
+<section class="">
+    <div class="row justify-content-center">
+        <div class="col-lg-4 col-md-4 col-sm-12 col-xs-12 card card-default rounded-0 shadow border border-gray">
+            <div class="card-body">
+                <div class="container-fluid">
                     <div class="d-flex w-100 align-items-center">
-                        <div class="col-3 text-center">
+                        <div class="col-3">
                             <i class="fs-1 text-primary fa fa-th-list"></i>
                         </div>
-                        <div class="col-9 text-center">
-                            <h1>{{airlines|intcomma}}</h1>
-                            <h3><b>Total Airlines</b></h3>
+                        <div class="col-9">
+                            <h1 class="text-center">{{airlines|intcomma}}</h2>
+                                <h3 class="text-center"><b>Total Airlines</b></h3>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-lg-4 col-md-6 col-sm-12">
-            <div class="card stat-panel h-100">
-                <div class="card-body">
+        <div class="col-lg-4 col-md-4 col-sm-12 col-xs-12 card card-default rounded-0 shadow border border-gray">
+            <div class="card-body">
+                <div class="container-fluid">
                     <div class="d-flex w-100 align-items-center">
-                        <div class="col-3 text-center">
-                            <i class="fs-1 text-info fa fa-map-marker"></i>
+                        <div class="col-3">
+                            <i class="fs-1 text-dark fa fa-map-marker"></i>
                         </div>
-                        <div class="col-9 text-center">
-                            <h1>{{airport|intcomma}}</h1>
-                            <h3><b>Total Airports</b></h3>
+                        <div class="col-9">
+                            <h1 class="text-center">{{airport|intcomma}}</h2>
+                                <h3 class="text-center"><b>Total Airports</b></h3>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-lg-4 col-md-6 col-sm-12">
-            <div class="card stat-panel h-100">
-                <div class="card-body">
+        <div class="col-lg-4 col-md-4 col-sm-12 col-xs-12 card card-default rounded-0 shadow border border-gray">
+            <div class="card-body">
+                <div class="container-fluid">
                     <div class="d-flex w-100 align-items-center">
-                        <div class="col-3 text-center">
+                        <div class="col-3">
                             <i class="fs-1 text-success fa fa-calendar-week"></i>
                         </div>
-                        <div class="col-9 text-center">
-                            <h1>{{flight|intcomma}}</h1>
-                            <h3><b>Total Upcoming Flights</b></h3>
+                        <div class="col-9">
+                            <h1 class="text-center">{{flight|intcomma}}</h2>
+                                <h3 class="text-center"><b>Total Upcoming Flights</b></h3>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-    <div class="row g-3 mt-3">
-        <div class="col-md-4">
-            <a class="admin-action" href="{% url 'flight-page' %}">
-                <i class="fas fa-plane-departure text-info mb-3"></i>
-                <h5 class="mb-1">Manage flight inventory</h5>
-                <small class="text-muted">Add routes, update fares, and monitor availability.</small>
-            </a>
-        </div>
-        <div class="col-md-4">
-            <a class="admin-action" href="{% url 'reservation' %}">
-                <i class="fas fa-clipboard-check text-success mb-3"></i>
-                <h5 class="mb-1">Review reservations</h5>
-                <small class="text-muted">Check passenger details and booking status.</small>
-            </a>
-        </div>
-        <div class="col-md-4">
-            <a class="admin-action" href="{% url 'upcoming-flights' %}">
-                <i class="fas fa-chart-line text-warning mb-3"></i>
-                <h5 class="mb-1">Operations view</h5>
-                <small class="text-muted">See upcoming departures and seat occupancy.</small>
-            </a>
         </div>
     </div>
 </section>
-{% endblock pageContent %} {% block ScriptBlock %}
+</div> {% endblock pageContent %} {% block ScriptBlock %}
 <script>
 </script>
 {% endblock ScriptBlock %}

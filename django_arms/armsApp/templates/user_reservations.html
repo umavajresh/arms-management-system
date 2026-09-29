@@ -2,90 +2,45 @@
 {% load static %}
 
 {% block pageContent %}
-<style>
-    .booking-hero {
-        border: 1px solid rgba(143, 176, 255, 0.18);
-        background: linear-gradient(135deg, rgba(124, 199, 255, 0.10), rgba(139, 92, 246, 0.10), rgba(8, 14, 24, 0.96));
-        border-radius: 26px;
-        padding: 1.25rem 1.5rem;
-        box-shadow: 0 18px 45px rgba(0,0,0,0.35);
-    }
-
-    .status-panel {
-        border-radius: 22px;
-        border: 1px solid rgba(143, 176, 255, 0.14);
-        background: rgba(11, 16, 24, 0.7);
-        padding: 1.1rem;
-    }
-
-    .booking-table {
-        border-radius: 22px;
-        overflow: hidden;
-        border: 1px solid rgba(143, 176, 255, 0.12);
-        background: rgba(10, 15, 24, 0.75);
-    }
-
-    .booking-table thead th {
-        background: rgba(18, 25, 39, 0.9);
-        color: #dfeeff;
-        border-bottom: 1px solid rgba(143, 176, 255, 0.12);
-    }
-
-    .booking-table tbody td {
-        color: var(--muted);
-        border-color: rgba(143, 176, 255, 0.08);
-        vertical-align: middle;
-    }
-</style>
 
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-            <div class="small text-info text-uppercase tracking-wide">Travel Ledger</div>
-            <h2 class="mb-0 text-white">My Bookings</h2>
-        </div>
-        <a href="{% url 'user-dashboard' %}" class="btn btn-primary">
-            <i class="fas fa-arrow-left me-2"></i> Back to Dashboard
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>My Bookings</h2>
+        <a href="{% url 'user-dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
         </a>
     </div>
 
-    <div class="booking-hero mb-4 float-card">
-        <h6 class="text-white mb-3"><i class="fas fa-info-circle text-info me-2"></i> Reservation Status Guide</h6>
-        <div class="row g-3">
+    <!-- Status Information -->
+    <div class="alert alert-info mb-4">
+        <h6><i class="fas fa-info-circle"></i> Reservation Status Guide:</h6>
+        <div class="row">
             <div class="col-md-3">
-                <div class="status-panel">
-                    <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i> Pending</span>
-                    <div class="small text-light opacity-75 mt-2">Awaiting administrator review</div>
-                </div>
+                <span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> Pending Admin Approval</span>
+                <br><small>Awaiting administrator review</small>
             </div>
             <div class="col-md-3">
-                <div class="status-panel">
-                    <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i> Confirmed</span>
-                    <div class="small text-light opacity-75 mt-2">Booking confirmed and ready</div>
-                </div>
+                <span class="badge bg-success"><i class="fas fa-check-circle"></i> Approved - Confirmed</span>
+                <br><small>Booking confirmed and ready</small>
             </div>
             <div class="col-md-3">
-                <div class="status-panel">
-                    <span class="badge bg-secondary"><i class="fas fa-ban me-1"></i> Cancelled</span>
-                    <div class="small text-light opacity-75 mt-2">Booking cancelled by user</div>
-                </div>
+                <span class="badge bg-secondary"><i class="fas fa-ban"></i> Cancelled</span>
+                <br><small>Booking cancelled by user</small>
             </div>
             <div class="col-md-3">
-                <div class="status-panel">
-                    <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i> Rejected</span>
-                    <div class="small text-light opacity-75 mt-2">Booking rejected during review</div>
-                </div>
+                <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Rejected by Admin</span>
+                <br><small>Booking rejected during review</small>
             </div>
         </div>
     </div>
 
-    <div class="card booking-table shadow">
-        <div class="card-header py-3 px-4">
-            <h4 class="mb-0 text-white">Your Flight Reservations</h4>
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Your Flight Reservations</h4>
         </div>
-        <div class="card-body p-0">
+        <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-hover">
                     <thead>
                         <tr>
                             <th>Booking ID</th>
@@ -133,26 +88,24 @@
                                     {% endwith %}
                                 </td>
                                 <td>
-                                    <div class="d-flex gap-2 flex-wrap">
-                                        <a href="{% url 'view-reservation-pk' res.id %}" class="btn btn-sm btn-info">
-                                            <i class="fas fa-eye"></i> View
-                                        </a>
-                                        {% if res.can_cancel %}
-                                        <button type="button" class="btn btn-sm btn-danger cancel-reservation" data-id="{{ res.id }}">
-                                            <i class="fas fa-times"></i> Cancel
-                                        </button>
-                                        {% else %}
-                                        <small class="text-muted d-block align-self-center">
-                                            <i class="fas fa-info-circle"></i> {{ res.get_cancellation_status }}
-                                        </small>
-                                        {% endif %}
-                                    </div>
+                                    <a href="{% url 'view-reservation-pk' res.id %}" class="btn btn-sm btn-info mb-1">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    {% if res.can_cancel %}
+                                    <button type="button" class="btn btn-sm btn-danger mb-1 cancel-reservation" data-id="{{ res.id }}">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                    {% else %}
+                                    <small class="text-muted d-block">
+                                        <i class="fas fa-info-circle"></i> {{ res.get_cancellation_status }}
+                                    </small>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
                         {% else %}
                             <tr>
-                                <td colspan="9" class="text-center py-5">You don't have any reservations yet.</td>
+                                <td colspan="9" class="text-center">You don't have any reservations yet.</td>
                             </tr>
                         {% endif %}
                     </tbody>
@@ -170,6 +123,7 @@
         $('.cancel-reservation').click(function(){
             var id = $(this).data('id');
             if(confirm("Are you sure you want to cancel this reservation?")){
+                // Send Ajax request to cancel reservation
                 $.ajax({
                     headers: {
                         "X-CSRFToken": '{{csrf_token}}'

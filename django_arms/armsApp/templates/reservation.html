@@ -9,15 +9,7 @@
 </style>
 <section class="py-4">
     <div class="container">
-        <div class="text-center mb-4">
-            <div class="small text-info fw-bold text-uppercase">Secure checkout</div>
-            <h3 class="fw-bolder mb-3">Complete your reservation</h3>
-            <div class="d-flex justify-content-center gap-2 small text-muted">
-                <span class="badge bg-success"><i class="fas fa-check me-1"></i>Flight</span>
-                <span class="badge bg-success"><i class="fas fa-check me-1"></i>Seats</span>
-                <span class="badge bg-primary">3. Passenger details</span>
-            </div>
-        </div>
+        <h3 class="fw-bolder text-center">Reservation Form</h3>
         <center>
             <hr class="bg-primary opacity-100" style="height:3px" width="5%">
         </center>
@@ -89,19 +81,12 @@
                 <div class="card rounded-0 shadow">
                     <div class="card-body">
                         <div class="container-fluid">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <div>
-                                    <h5 class="mb-1">Passenger details</h5>
-                                    <small class="text-muted">Use the name shown on the travel document.</small>
-                                </div>
-                                <i class="fas fa-id-card text-info fs-3"></i>
-                            </div>
                             <div class="alert alert-info mb-3">
                                 <small><i class="fas fa-info-circle me-2"></i> Fields marked with <span class="text-danger">*</span> are required.</small>
                             </div>
                             <form action="" id="reserve-form">
                                 <input type="hidden" name="flight" value="{{flight.id}}">
-                                
+
                                 {% if is_multi_passenger %}
                                 <!-- Multi-passenger reservation -->
                                 <div class="alert alert-success mb-3">
@@ -128,12 +113,12 @@
                                     <p class="mb-0">Price: <strong>₹{{seat_price}}</strong></p>
                                 </div>
                                 {% endif %}
-                                
+
                                 <!-- Passenger Information -->
                                 <div id="passenger-forms-container">
                                     <!-- Passenger forms will be generated dynamically -->
                                 </div>
-                                
+
                                 <!-- Contact Information (Shared for all passengers) -->
                                 <div class="card border-info mb-4">
                                     <div class="card-header bg-info text-white">
@@ -164,7 +149,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="text-center mb-3">
                                     <button type="button" class="btn btn-primary bg-gradient-dark btn-lg rounded-pill w-100" data-bs-toggle="modal" data-bs-target="#verificationModal">Submit Reservation</button>
                                 </div>
@@ -215,7 +200,7 @@
     </div>
 </div>
 
-{% endblock pageContent %} 
+{% endblock pageContent %}
 
 {% block ScriptBlock %}
 <script>
@@ -225,15 +210,15 @@
             width: "100%",
             containerCssClass: 'form-control form-control-sm rounded-0'
         })
-        
+
         // Generate passenger forms based on seat selection data
         generatePassengerForms();
-        
+
         // Load CAPTCHA when modal is shown
         $('#verificationModal').on('shown.bs.modal', function() {
             loadCaptcha();
         });
-        
+
         function loadCaptcha() {
             $.ajax({
                 url: "{% url 'get-captcha' %}",
@@ -246,27 +231,27 @@
                 }
             });
         }
-        
+
         // Handle verification and submission
         $('#confirm-reservation').click(function() {
             var reserveForm = $('#reserve-form')[0];
-            
+
             // First validate the main reservation form
             if (!reserveForm.checkValidity()) {
                 $('#verificationModal').modal('hide');
                 reserveForm.reportValidity();
                 return false;
             }
-            
+
             // Validate verification form
             var password = $('#verification-password').val();
             var captcha = $('#captcha-container input[name="captcha_1"]').val();
-            
+
             if (!password || !captcha) {
                 showVerificationError('Please fill in all verification fields.');
                 return false;
             }
-            
+
             // Verify password and CAPTCHA
             $.ajax({
                 headers: {
@@ -294,21 +279,21 @@
                 }
             });
         });
-        
+
         function showVerificationError(message) {
             $('#verification-error').html(message).show();
         }
-        
+
         function submitReservation() {
             var _this = $('#reserve-form');
             $('.err-msg').remove();
             var el = $('<div>');
             el.addClass("alert alert-danger err-msg");
             el.hide();
-            
+
             start_loader();
             $('#verificationModal').modal('hide');
-            
+
             $.ajax({
                 headers: {
                     "X-CSRFToken": '{{csrf_token}}'
@@ -343,25 +328,25 @@
                 }
             })
         }
-        
+
         // Clear verification form when modal is hidden
         $('#verificationModal').on('hidden.bs.modal', function() {
             $('#verification-password').val('');
             $('#verification-error').hide();
         });
-        
+
         // Function to refresh CAPTCHA
         window.refreshCaptcha = function() {
             loadCaptcha();
         };
-        
+
         // Generate passenger forms based on selected seats
         function generatePassengerForms() {
             // Get multi-passenger data from Django context
             let passengerCount = {{ passenger_count|default:1 }};
             let selectedSeats = [];
             let isMultiPassenger = {{ is_multi_passenger|yesno:"true,false" }};
-            
+
             {% if is_multi_passenger and selected_seats %}
             selectedSeats = {{ selected_seats|safe }};
             {% elif selected_seat %}
@@ -374,12 +359,12 @@
                 price: {{ seat_price|default:0 }}
             }];
             {% endif %}
-            
+
             console.log('Passenger data:', { passengerCount, selectedSeats, isMultiPassenger });
-            
+
             const container = $('#passenger-forms-container');
             container.empty();
-            
+
             // Generate form for each passenger
             for (let i = 0; i < passengerCount; i++) {
                 const seatInfo = selectedSeats[i] || { seat: 'TBD', display_class: 'Economy', class: 'economy', type: '2' };
@@ -433,7 +418,7 @@
                 `;
                 container.append(passengerForm);
             }
-            
+
             // Add hidden field for passenger count
             container.append(`<input type="hidden" name="passenger_count" value="${passengerCount}">`);
         }
