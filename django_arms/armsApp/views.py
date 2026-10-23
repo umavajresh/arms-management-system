@@ -75,7 +75,6 @@ def landing_page(request):
     context['upcoming_flights'] = models.Flights.objects.filter(
         departure__gte=timezone.now(),
         delete_flag=0,
-        status=1
     ).select_related('airline', 'from_airport', 'to_airport').order_by('departure')[:4]
     
     return render(request, 'landing.html', context)
