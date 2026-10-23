@@ -735,22 +735,25 @@ def get_travel_response(message, flights=None, language='en', user_preferences=N
     # Check for Reservation Lookup in message (e.g. GUEST-XXXX-XXXX or alphanumeric ref)
     ref_match = re.search(r'\b(GUEST-[A-Z0-9]{4}-[A-Z0-9]{4})\b', message or '', re.IGNORECASE)
     if ref_match:
-        ref_code = ref_match.group(1).upper()
-        res = Reservation.objects.filter(booking_reference=ref_code).select_related('flight', 'flight__airline', 'flight__from_airport', 'flight__to_airport').first()
-        if res:
-            status_text = res.get_status_display_text()[0]
-            can_cancel_str = "Yes (Eligible for cancellation before departure)" if res.can_cancel() else "No (Flight departed or booking cancelled)"
-            return "\n".join([
-                f"Reservation Record for {res.booking_reference}:",
-                f"- Passenger: {res.first_name} {res.last_name}",
-                f"- Flight: {res.flight.code} ({res.flight.airline.name})",
-                f"- Route: {res.flight.from_airport.name} ({res.flight.from_airport.code}) to {res.flight.to_airport.name} ({res.flight.to_airport.code})",
-                f"- Departure: {res.flight.departure.strftime('%d %b %Y, %I:%M %p')}",
-                f"- Seat Number: {res.seat_number}",
-                f"- Status: {status_text}",
-                f"- Can Cancel: {can_cancel_str}",
-                f"- Manage Booking: [Guest Lookup Portal](/guest_booking)",
-            ])
+        try:
+            ref_code = ref_match.group(1).upper()
+            res = Reservation.objects.filter(booking_reference=ref_code).select_related('flight', 'flight__airline', 'flight__from_airport', 'flight__to_airport').first()
+            if res:
+                status_text = res.get_status_display_text()[0]
+                can_cancel_str = "Yes (Eligible for cancellation before departure)" if res.can_cancel() else "No (Flight departed or booking cancelled)"
+                return "\n".join([
+                    f"Reservation Record for {res.booking_reference}:",
+                    f"- Passenger: {res.first_name} {res.last_name}",
+                    f"- Flight: {res.flight.code} ({res.flight.airline.name})",
+                    f"- Route: {res.flight.from_airport.name} ({res.flight.from_airport.code}) to {res.flight.to_airport.name} ({res.flight.to_airport.code})",
+                    f"- Departure: {res.flight.departure.strftime('%d %b %Y, %I:%M %p')}",
+                    f"- Seat Number: {res.seat_number}",
+                    f"- Status: {status_text}",
+                    f"- Can Cancel: {can_cancel_str}",
+                    f"- Manage Booking: [Guest Lookup Portal](/guest_booking)",
+                ])
+        except Exception:
+            pass
 
     prefs = extract_travel_preferences(message)
     budget = prefs.get('budget')
@@ -812,7 +815,12 @@ def get_travel_response(message, flights=None, language='en', user_preferences=N
     # Check 2: Flight Search & Route Inquiries (e.g. "flights from Chennai", "flights to Dubai", "any flights to Mumbai")
     is_flight_search_query = any(k in lower_msg for k in ['flight', 'flights', 'fly', 'fare', 'ticket', 'airfare']) and (origin or destination or 'from' in lower_msg or 'to' in lower_msg)
     if is_flight_search_query and not budget:
-        matched_flights = flights or search_real_flights(prefs, limit=6)
+        matched_flights = flights
+        if matched_flights is None:
+            try:
+                matched_flights = search_real_flights(prefs, limit=6)
+            except Exception:
+                matched_flights = []
         if matched_flights:
             lines = [
                 f"Available bookable flights currently in the ARMS inventory matching your route:",
@@ -848,7 +856,12 @@ def get_travel_response(message, flights=None, language='en', user_preferences=N
             season_info = _seasonal_note(dest_name, prefs.get('month') or 'November')
 
             # Search real flights to this destination
-            dest_flights = search_real_flights({'destination': dest_name, 'origin': origin or ''}, limit=4)
+            dest_flights = flights
+            if dest_flights is None:
+                try:
+                    dest_flights = search_real_flights({'destination': dest_name, 'origin': origin or ''}, limit=4)
+                except Exception:
+                    dest_flights = []
 
             lines = [
                 f"Comprehensive Travel Guide for {dest_name} ({days} days):",
