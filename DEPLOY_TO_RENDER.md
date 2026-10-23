@@ -1,32 +1,52 @@
-Quick Render deployment
+# ARMS 2.0 Deployment Guide
 
-1. Push this repository (or your fork) to GitHub. Example:
+## 1. Quick Deploy to Render
+
+1. Commit and push all changes to GitHub:
+   ```bash
+   git add .
+   git commit -m "Deploy ARMS 2.0"
+   git push origin main
+   ```
+2. In the [Render Dashboard](https://dashboard.render.com):
+   - Click **New** &rarr; **Blueprint** (or **Web Service**).
+   - Connect your GitHub repository `umavajresh/arms-management-system`.
+   - Render automatically reads [`render.yaml`](./render.yaml).
+3. If creating manually as a Web Service:
+   - **Root Directory**: `django_arms`
+   - **Environment**: `Python 3`
+   - **Build Command**: `pip install --upgrade pip && pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput`
+   - **Start Command**: `gunicorn django_arms.wsgi:application --bind 0.0.0.0:$PORT`
+4. Set Environment Variables:
+   - `SECRET_KEY`: `<secure-random-key>`
+   - `DEBUG`: `False`
+   - `ALLOWED_HOSTS`: `*` (or your custom domain)
+   - `AVIATIONSTACK_API_KEY`: `<optional-live-radar-key>`
+
+---
+
+## 2. Docker Deployment
+
+Deploy on any cloud VM (AWS EC2, DigitalOcean, Hetzner, GCP):
 
 ```bash
-git add .
-git commit -m "Prepare for Render deployment"
-git push origin main
+# Build and run container in detached mode
+docker compose up -d --build
 ```
+Access the application at `http://<your-server-ip>:8001/`.
 
-2. In Render dashboard: New -> Web Service -> Connect your GitHub repo `umavajresh/arms-management-system`.
+---
 
-3. Render will detect `render.yaml` and create a service. If manual, set:
-   - Environment: `Python 3`
-   - Build Command: `pip install --upgrade pip && pip install -r django_arms/requirements.txt && python django_arms/manage.py collectstatic --noinput`
-   - Start Command: `gunicorn django_arms.wsgi:application --bind 0.0.0.0:$PORT`
+## 3. Local Production Daemon (Gunicorn)
 
-4. Set environment variables in Render (Dashboard -> Environment):
-   - `SECRET_KEY`: generate a secure random string
-   - `DEBUG` = `False`
-   - `ALLOWED_HOSTS` = yourdomain.com (or `*` to test)
-   - `AVIATIONSTACK_API_KEY` = your live flight API key
-   - `DATABASE_URL` (if using Postgres)
-
-5. After deploy, open the Live URL. Run migrations in Render Shell:
+Run as a high-performance background daemon on your Mac or Linux server:
 
 ```bash
-python django_arms/manage.py migrate
-python django_arms/manage.py createsuperuser
+cd django_arms
+../.venv/bin/gunicorn django_arms.wsgi:application --bind 127.0.0.1:8001 --workers 3 --daemon
 ```
 
-That's it: Render manages TLS and scaling.
+To stop:
+```bash
+pkill -f "gunicorn.*django_arms"
+```
