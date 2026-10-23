@@ -588,11 +588,61 @@
                             <p class="text-muted">No seats selected</p>
                         </div>
                         <hr>
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <strong>Total Price:</strong>
-                            <strong id="total-price">₹0.00</strong>
+                            <strong id="total-price" class="text-warning fs-5">₹0.00</strong>
                         </div>
-                        <div id="selection-status" class="mt-2"></div>
+                        <div id="selection-status" class="mb-3"></div>
+
+                        <!-- Price Chart & Itemized Breakdown -->
+                        <div id="price-chart-section" class="p-3 rounded mb-3" style="background: rgba(11, 15, 23, 0.7); border: 1px solid var(--arms-border, #263345);">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small fw-bold text-light"><i class="fas fa-chart-pie me-1 text-warning"></i> Fare Price Chart</span>
+                                <span class="badge bg-dark border text-muted" id="price-chart-badge">Itemized</span>
+                            </div>
+
+                            <!-- Stacked Horizontal Price Distribution Chart -->
+                            <div class="progress mb-2 rounded-1" style="height: 10px; background: #0b0f17; border: 1px solid #263345;">
+                                <div class="progress-bar" id="chart-bar-base" role="progressbar" style="width: 68%; background-color: #315b6b;" title="Base Fare: 68%"></div>
+                                <div class="progress-bar" id="chart-bar-fuel" role="progressbar" style="width: 14%; background-color: #c5a880;" title="Fuel Surcharge: 14%"></div>
+                                <div class="progress-bar" id="chart-bar-airport" role="progressbar" style="width: 10%; background-color: #38a169;" title="Airport & Security: 10%"></div>
+                                <div class="progress-bar" id="chart-bar-gst" role="progressbar" style="width: 8%; background-color: #718096;" title="GST & Taxes: 8%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted mb-3" style="font-size: 0.72rem;">
+                                <span><span class="d-inline-block rounded-circle me-1" style="width:7px; height:7px; background:#315b6b;"></span>Base (68%)</span>
+                                <span><span class="d-inline-block rounded-circle me-1" style="width:7px; height:7px; background:#c5a880;"></span>Fuel (14%)</span>
+                                <span><span class="d-inline-block rounded-circle me-1" style="width:7px; height:7px; background:#38a169;"></span>Fees (10%)</span>
+                                <span><span class="d-inline-block rounded-circle me-1" style="width:7px; height:7px; background:#718096;"></span>GST (8%)</span>
+                            </div>
+
+                            <!-- Itemized Breakdown Table -->
+                            <div class="small">
+                                <div class="d-flex justify-content-between text-muted py-1 border-bottom border-secondary border-opacity-25">
+                                    <span>Base Airfare:</span>
+                                    <span class="text-light" id="breakdown-base-fare">₹0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between text-muted py-1 border-bottom border-secondary border-opacity-25">
+                                    <span>Fuel & Airline Surcharge (YQ):</span>
+                                    <span class="text-light" id="breakdown-fuel">₹0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between text-muted py-1 border-bottom border-secondary border-opacity-25">
+                                    <span>Airport Security & PSF/ASF:</span>
+                                    <span class="text-light" id="breakdown-airport">₹0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between text-muted py-1 border-bottom border-secondary border-opacity-25">
+                                    <span>GST & Government Taxes:</span>
+                                    <span class="text-light" id="breakdown-gst">₹0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between fw-bold text-light pt-2">
+                                    <span>Total Payable:</span>
+                                    <span class="text-warning" id="breakdown-total">₹0.00</span>
+                                </div>
+                            </div>
+
+                            <button type="button" class="btn btn-outline-secondary btn-sm w-100 rounded-0 mt-3" data-bs-toggle="modal" data-bs-target="#fareComparisonModal">
+                                <i class="fas fa-balance-scale me-1"></i> Class Price Chart & Perks
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="alert alert-info">
@@ -629,6 +679,73 @@
                         </span>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fare Comparison & Perks Modal -->
+<div class="modal fade" id="fareComparisonModal" tabindex="-1" aria-labelledby="fareComparisonModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-content-dark rounded-0" style="background: var(--arms-surface, #131924); border: 1px solid var(--arms-border, #263345); color: #e2e8f0;">
+            <div class="modal-header" style="background: var(--arms-card, #182230); border-bottom: 1px solid #263345;">
+                <h5 class="modal-title h6" id="fareComparisonModalLabel">
+                    <i class="fas fa-balance-scale me-2 text-warning"></i>Flight {{ flight.code }} &bull; Class Fare & Perks Chart
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-dark align-middle text-center mb-0" style="border-color: #263345;">
+                        <thead>
+                            <tr style="background: #182230;">
+                                <th class="text-start">Feature / Allowance</th>
+                                <th style="width: 40%; color: #38a169;">Economy Class</th>
+                                <th style="width: 40%; color: #c5a880;">Business Class</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="text-start fw-bold">Published Base Fare</td>
+                                <td class="fw-bold">{{ flight.economy_price|inr }}</td>
+                                <td class="fw-bold text-warning">{{ flight.business_class_price|inr }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-start">Cabin Baggage</td>
+                                <td>1 piece up to 7 kg</td>
+                                <td>1 piece up to 7 kg + personal bag</td>
+                            </tr>
+                            <tr>
+                                <td class="text-start">Checked Baggage</td>
+                                <td>1 piece up to 15 kg (Domestic)</td>
+                                <td>1 piece up to 25 kg (Domestic)</td>
+                            </tr>
+                            <tr>
+                                <td class="text-start">Seat Pitch & Recline</td>
+                                <td>Standard 30-31 inch pitch</td>
+                                <td>Premium 38-40 inch deep recline</td>
+                            </tr>
+                            <tr>
+                                <td class="text-start">In-Flight Meals</td>
+                                <td>Complimentary refreshments</td>
+                                <td>Chef-curated hot multi-course dining</td>
+                            </tr>
+                            <tr>
+                                <td class="text-start">Priority Boarding & Lounge</td>
+                                <td>Standard boarding</td>
+                                <td>Dedicated counter, priority boarding & lounge</td>
+                            </tr>
+                            <tr>
+                                <td class="text-start">Ticket Changes / Cancellation</td>
+                                <td>Standard cancellation fees apply</td>
+                                <td>Flexible changes with zero change fee</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="background: var(--arms-card, #182230); border-top: 1px solid #263345;">
+                <button type="button" class="btn btn-outline-secondary btn-sm rounded-0" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
