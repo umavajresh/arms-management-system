@@ -1,13 +1,16 @@
 :root {
-    --bs-body-bg: #f1f3f0;
-    --bs-body-color: #263238;
+    --bs-body-bg: #0b0f17;
+    --bs-body-color: #e2e8f0;
     --bs-primary: #315b6b;
     --bs-primary-rgb: 49, 91, 107;
-    --arms-page: #f1f3f0;
-    --arms-surface: #f8f9f6;
-    --arms-border: #d4dad6;
-    --arms-text: #263238;
-    --arms-muted: #56636a;
+    --arms-page: #0b0f17;
+    --arms-surface: #131924;
+    --arms-card: #182230;
+    --arms-border: #263345;
+    --arms-text: #e2e8f0;
+    --arms-muted: #8b9bb0;
+    --arms-gold: #c5a880;
+    --arms-gold-hover: #b3956e;
 }
 
 body {
@@ -34,7 +37,7 @@ body {
 .modal-header,
 .modal-footer {
     color: var(--arms-text);
-    background-color: #e9eeeb;
+    background-color: var(--arms-card);
     border-color: var(--arms-border);
 }
 
