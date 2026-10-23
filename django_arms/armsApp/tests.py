@@ -735,7 +735,7 @@ class TravelChatbotTests(SimpleTestCase):
         personalized = get_travel_response(
             "International food and culture trip from Chennai in December, budget ₹1,200,000"
         )
-        self.assertIn('Season note for December', personalized)
+        self.assertIn('Sample seasonal note for December', personalized)
         self.assertTrue(any(city in personalized for city in ('Bangkok', 'Kuala Lumpur')))
 
     def test_extract_travel_preferences_understands_destination_season_and_style(self):
@@ -784,7 +784,7 @@ class TravelChatbotTests(SimpleTestCase):
 
     def test_chatbot_answers_check_in_timing(self):
         response = get_travel_response("What are the airport check-in times?")
-        self.assertIn("no authoritative check-in or boarding-time source", response)
+        self.assertIn("does not have an authoritative check-in or boarding-time source", response)
         self.assertIn("official itinerary", response)
 
     def test_auto_provider_uses_matching_environment_key(self):

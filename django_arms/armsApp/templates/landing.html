@@ -168,9 +168,9 @@
     <div class="container">
         <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-2">
             <div>
-                <span class="badge bg-secondary rounded-0 text-uppercase mb-2">Curated Sectors</span>
+                <span class="badge bg-secondary rounded-0 text-uppercase mb-2">Popular Destinations</span>
                 <h2 class="h4 fw-bold text-light mb-1">Featured Global Destinations</h2>
-                <p class="small text-muted mb-0">Explore premier intercontinental flight connections with verified airline inventory.</p>
+                <p class="small text-muted mb-0">Explore destinations. Routes and availability depend on the schedule records in ARMS.</p>
             </div>
             <a href="{% url 'search-flight' %}" class="small text-secondary text-decoration-none">
                 View all flight routes &rarr;
@@ -190,9 +190,9 @@
                         High-speed cultural transit, cherry blossom seasons, and metropolitan culinary innovation.
                     </p>
                     <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25">
-                        <span class="small text-muted">Daily Service</span>
+                        <span class="small text-muted">Explore schedules</span>
                         <a href="{% url 'search-flight' %}" class="btn btn-sm btn-outline-light rounded-0">
-                            Book Route
+                            Search flights
                         </a>
                     </div>
                 </div>
@@ -210,9 +210,9 @@
                         Architectural landmarks, world-class museum exhibitions, and historic Seine riverfronts.
                     </p>
                     <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25">
-                        <span class="small text-muted">Direct Service</span>
+                        <span class="small text-muted">Explore schedules</span>
                         <a href="{% url 'search-flight' %}" class="btn btn-sm btn-outline-light rounded-0">
-                            Book Route
+                            Search flights
                         </a>
                     </div>
                 </div>
@@ -230,9 +230,9 @@
                         Global aviation crossroads, desert safari excursions, and modern skyline architecture.
                     </p>
                     <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25">
-                        <span class="small text-muted">High Frequency</span>
+                        <span class="small text-muted">Explore schedules</span>
                         <a href="{% url 'search-flight' %}" class="btn btn-sm btn-outline-light rounded-0">
-                            Book Route
+                            Search flights
                         </a>
                     </div>
                 </div>
@@ -250,9 +250,9 @@
                         Broadway theatre districts, iconic skyline panoramas, and transcontinental financial hub.
                     </p>
                     <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25">
-                        <span class="small text-muted">Daily Flights</span>
+                        <span class="small text-muted">Explore schedules</span>
                         <a href="{% url 'search-flight' %}" class="btn btn-sm btn-outline-light rounded-0">
-                            Book Route
+                            Search flights
                         </a>
                     </div>
                 </div>
@@ -273,11 +273,11 @@
                     </span>
                     <h2 class="h4 fw-bold text-light mb-2">Multilingual AI Travel Assistant</h2>
                     <p class="small text-muted mb-3">
-                        Plan journeys using natural language. Check scheduled flights and seat counts recorded in ARMS, baggage guidance, self-service cancellation rules, and itinerary estimates in English, Spanish, French, German, Japanese, and Hindi.
+                        Ask about schedule records and itinerary estimates in English, Spanish, French, German, Japanese, and Hindi. Airline baggage and cancellation policies must be confirmed with the operating carrier.
                     </p>
                     <div class="p-3 mb-3 border rounded-0" style="background-color: #0b0f17; border-color: var(--arms-border, #263345) !important;">
                         <div class="small text-muted mb-1">Try asking:</div>
-                        <div class="small fw-semibold text-secondary">"What is the status of flight ARMS101?" or "Baggage allowance for international flights"</div>
+                        <div class="small fw-semibold text-secondary">"Search scheduled flights from my city" or "How can I verify a reservation?"</div>
                     </div>
                     <a href="{% url 'travel-chat' %}" class="btn btn-gold rounded-0 btn-sm px-3">
                         <i class="fas fa-comments me-1" aria-hidden="true"></i> Start Travel Consultation
@@ -291,13 +291,13 @@
                     <span class="badge bg-dark border text-light rounded-0 mb-3" style="border-color: var(--arms-border, #263345) !important;">
                         Aviation Telemetry
                     </span>
-                    <h2 class="h4 fw-bold text-light mb-2">Live Flight Radar and Telemetry</h2>
+                    <h2 class="h4 fw-bold text-light mb-2">Flight Radar and Telemetry</h2>
                     <p class="small text-muted mb-3">
-                        Track commercial flights across interactive geospatial radar with real-time groundspeed, altitude telemetry, and route progress powered by OpenSky Network and AviationStack integrations.
+                        View flight information on an interactive map when an external tracking provider is configured. Without a provider, ARMS may show simulated radar data.
                     </p>
                     <div class="p-3 mb-3 border rounded-0" style="background-color: #0b0f17; border-color: var(--arms-border, #263345) !important;">
                         <div class="small text-muted mb-1">Telemetry Status:</div>
-                        <div class="small fw-semibold text-secondary">Geospatial Leaflet map &bull; Active transponder tracking &bull; Simulated radar fallback</div>
+                        <div class="small fw-semibold text-secondary">Interactive map &bull; Provider-dependent tracking &bull; Simulated fallback</div>
                     </div>
                     <a href="{% url 'flight-tracker' %}" class="btn btn-outline-light rounded-0 btn-sm px-3">
                         <i class="fas fa-radar me-1" aria-hidden="true"></i> Launch Flight Radar
