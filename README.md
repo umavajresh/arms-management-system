@@ -1,6 +1,6 @@
 # Django ARMS 2.0: AI-Powered Airline Reservation and Cinematic Travel Management System
 
-ARMS 2.0 is an intelligent airline reservation and cinematic travel management platform built on Django. It combines verified airline inventory management, real-time flight tracking telemetry, unauthenticated guest booking workflows, two-factor authentication security, and an advanced multilingual conversational travel assistant.
+ARMS 2.0 is a Django airline reservation and travel-management application. It combines scheduled flight and seat records maintained in ARMS, optional flight-tracking integrations, guest reservation workflows, two-factor authentication, and a multilingual conversational travel assistant. An ARMS reservation is not an airline-issued ticket unless an external booking provider confirms it.
 
 Project demonstration: [YouTube video](https://youtu.be/EJkb_slY4gU?si=LH_LaqsJEbSqSGjS)
 
@@ -19,13 +19,13 @@ Project demonstration: [YouTube video](https://youtu.be/EJkb_slY4gU?si=LH_LaqsJE
 
 ## What's New in ARMS 2.0
 
-- **Dark Cinematic Visual Direction**: Built on a sophisticated obsidian and champagne gold aesthetic (`#0b0f17`, `#131924`, `#c5a880`) adhering to 30 strict design restrictions (0 emojis, 0 em dashes, 0 Lucide, 0 drop shadows, 0 harsh gradients, 4-column balanced grid layouts).
+- **Dark Cinematic Visual Direction**: Built around an obsidian and champagne-gold palette (`#0b0f17`, `#131924`, `#c5a880`) with responsive navigation and booking entry points.
 - **Guest Booking and Management Mode**: Unauthenticated visitors can browse schedules, select seats, complete bookings, receive unguessable references (`GUEST-XXXX-XXXX`), and retrieve or manage their itineraries via the Guest Lookup Portal.
-- **Multilingual AI Travel Assistant**: Conversational agent supporting English, Spanish, French, German, Japanese, and Hindi, equipped with controlled server-side tools (`search_flights`, `get_flight_details`, `lookup_reservation`, `policy_faq`) and clear inventory vs simulation disclosures.
+- **Multilingual AI Travel Assistant**: Conversational agent supporting English, Spanish, French, German, Japanese, and Hindi. When a provider is configured, it can use validated, read-only flight-search and fare tools. Reservation lookups remain in the verified portal.
 - **Two-Factor Authentication (2FA / OTP)**: Timing-safe one-time passcode verification for passenger and administrator logins with 5-attempt rate-limiting lockout.
 - **User Travel Preferences**: Persistent preferences (seat class, language, currency, meal preferences, travel style) for authenticated passengers.
-- **Legitimate Compliance**: Built-in Terms of Service (`/terms`) and Privacy Policy (`/privacy`) pages integrated into the navigation and footer.
-- **Comprehensive Test Coverage**: Expanded automated test suite with 54 passing tests covering authentication, 2FA, guest reservations, IDOR protection, flight tracking, and AI tool orchestration.
+- **Legal and Privacy Drafts**: Terms of Service (`/terms`) and Privacy Policy (`/privacy`) pages are linked from navigation. They are drafts and require operator and legal review before production use.
+- **Automated Tests**: Run the current Django suite with `python manage.py test`; it covers authentication, guest reservations, flight tracking, and AI behavior.
 
 ## Features
 
@@ -50,7 +50,7 @@ Project demonstration: [YouTube video](https://youtu.be/EJkb_slY4gU?si=LH_LaqsJE
 
 - Reservation status notifications and QR-code support in reservation views.
 - Flight status lookup with AviationStack when configured, with OpenSky Network used as a fallback source.
-- Travel assistant that searches the app's own future-flight data and can call OpenAI when configured; local recommendations are used if the API key is absent or the API call fails.
+- Travel assistant that searches ARMS's own future-flight records and can call OpenRouter, Groq, Hugging Face, or OpenAI when configured. The model can use bounded read-only ARMS search and fare tools. Without credentials or when a provider fails, it uses clearly identified local guidance. Local destination costs are sample estimates, not current market prices.
 - CAPTCHA verification on reservation submission and standard Django CSRF protection on form posts.
 
 ## How the system works
@@ -108,7 +108,7 @@ The Django project package (`django_arms/`) owns settings, middleware, and the r
 - SQLite for local development; PostgreSQL through `DATABASE_URL` for a persistent deployment database.
 - Django templates, Bootstrap assets, jQuery, DataTables, and Select2 for the web interface.
 - WhiteNoise for static files in the deployed Django service.
-- `django-simple-captcha`, `django-qr-code`, Pillow, and OpenAI Python SDK for their respective features.
+- `django-simple-captcha`, `django-qr-code`, Pillow, and `requests`/`certifi` for external travel and AI APIs.
 - AviationStack and OpenSky Network for optional flight status/position lookups; Leaflet and OpenStreetMap tiles render available map positions.
 
 ## Repository layout
@@ -190,10 +190,17 @@ The importable production settings module is `django_arms.settings_prod`. `manag
 | `SECURE_HSTS_SECONDS` | Optional | HSTS duration in seconds. Defaults to `0`; set only after confirming HTTPS works end to end. |
 | `SECURE_HSTS_INCLUDE_SUBDOMAINS` | Optional | Set to `True` only if every subdomain is HTTPS-only. |
 | `SECURE_HSTS_PRELOAD` | Optional | Set to `True` only when the domain meets browser preload requirements. |
-| `OPENAI_API_KEY` | Optional | Enables the OpenAI-backed travel assistant; local recommendations remain available without it. |
+| `OPENROUTER_API_KEY` | Optional | Enables OpenRouter model responses for the travel assistant. |
+| `GROQ_API_KEY` | Optional | Enables Groq model responses for the travel assistant. |
+| `HUGGINGFACE_API_KEY` | Optional | Enables Hugging Face Inference model responses for the travel assistant. |
+| `OPENAI_API_KEY` | Optional | Enables OpenAI model responses for the travel assistant. |
+| `AI_API_KEY` | Optional | Generic fallback key when a provider-specific key is not set; the provider is inferred from its key prefix. |
+| `SITE_URL` | Optional | Public application URL sent as the OpenRouter HTTP referer. |
 | `AVIATIONSTACK_API_KEY` | Optional | Enables the AviationStack flight lookup before OpenSky fallback. |
 
 Local accounts and data are stored in the SQLite database under the Django project directory. A hosted database is separate; users and flights do not move between local and hosted databases automatically.
+
+Configure one provider-specific API key in the deployment environment for server-wide model access, or enter a key in **AI Key & Model** for the current browser session. The assistant sends the current message and up to three previous exchanges to the selected provider. Do not send sensitive personal or booking details to an external model. **Clear conversation** removes the temporary chat history and travel preferences held in the session. Without a configured provider key, the assistant responds with local rule-based travel guidance rather than model-generated answers.
 
 ## Deployment
 
@@ -219,6 +226,7 @@ The repository contains Render, Vercel, and Docker configuration, but a persiste
 - Use a unique production `SECRET_KEY`, HTTPS, a restricted `ALLOWED_HOSTS` list, and a managed database with backups. Review Django's deployment checklist before exposing the service publicly.
 - `settings_prod` enables HTTPS redirects and secure session/CSRF cookies when `DEBUG=False`. HSTS is opt-in; enable subdomain coverage or browser preload only after verifying that the entire domain is permanently HTTPS-only.
 - Reservation verification throttling is session-scoped, not a distributed or account-level rate limit. Add shared, user-aware throttling at the application or edge before exposing authentication and booking endpoints to substantial public traffic.
+- AI chat requests are capped per IP using Django's configured cache. The default development cache is process-local; configure a shared cache backend before relying on this limit across multiple production workers or instances.
 - Local SQLite is for development. Use PostgreSQL in production so the reservation transaction's row locking can serialize competing bookings for the same flight.
 - The repository includes deployment configurations for multiple hosts. Select one deployment target and verify its build root, environment variables, database, migrations, and static files as a single deployment setup.
 - Flight tracking and AI suggestions depend on third-party availability when their optional services are used. External flight data may be incomplete, rate-limited, or delayed.

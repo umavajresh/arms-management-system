@@ -159,9 +159,9 @@
                             <h1 class="h5 mb-0 fw-bold text-light">
                                 <i class="fas fa-robot me-2 text-secondary" aria-hidden="true"></i>AI Travel Assistant
                             </h1>
-                            <span id="active-engine-badge" class="ai-status-badge rounded-1 ms-2">Engine: ARMS Neural Brain</span>
+                            <span id="active-engine-badge" class="ai-status-badge rounded-1 ms-2">AI setup: API key required</span>
                         </div>
-                        <small class="text-muted">Multilingual flight discovery, itinerary orchestration, and open-source AI intelligence</small>
+                        <small class="text-muted">Model-generated travel help with ARMS flight data. Add a provider key to enable live AI responses; guided answers remain available without one.</small>
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <div class="d-flex align-items-center gap-1" id="lang-selector">
@@ -176,6 +176,9 @@
                         <button type="button" class="btn btn-outline-warning btn-sm rounded-0" data-bs-toggle="modal" data-bs-target="#aiSettingsModal">
                             <i class="fas fa-sliders-h me-1" aria-hidden="true"></i> AI Key & Model
                         </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-0" id="clear-chat-button">
+                            Clear conversation
+                        </button>
                         <a href="{% url 'search-flight' %}" class="btn btn-outline-secondary btn-sm rounded-0">Flight Search</a>
                     </div>
                 </div>
@@ -183,7 +186,7 @@
                     <div id="chat-window" class="p-3" style="min-height: 420px; max-height: 520px; overflow-y: auto;">
                         <div class="d-flex justify-content-start mb-3">
                             <div class="chat-message rounded px-3 py-2" style="max-width: 85%;">
-                                Hello. Welcome to ARMS 2.0 Intelligent Aviation & Travel Assistant. I can assist you with real flight schedules in our inventory, personalized trip itineraries across 40+ destinations, baggage rules, check-in information, and booking lookups. How can I assist your travels today?
+                                Hello. Welcome to the ARMS travel assistant. I can help with scheduled flights recorded in ARMS, sample trip-planning estimates, carrier-policy guidance, and directions to secure booking lookup. ARMS inventory is not a live airline-distribution feed. How can I help with your travels today?
                             </div>
                         </div>
                     </div>
@@ -192,7 +195,7 @@
                             <span class="text-muted small me-2">Suggested queries:</span>
                             <button type="button" class="suggestion-chip">Plan a trip to Kadapa under ₹12,000</button>
                             <button type="button" class="suggestion-chip">Flights from Chennai</button>
-                            <button type="button" class="suggestion-chip">Price chart for flight AI808</button>
+                            <button type="button" class="suggestion-chip">Show me a fare breakdown for a flight in ARMS</button>
                             <button type="button" class="suggestion-chip">Plan a 3-day trip to Paris</button>
                             <button type="button" class="suggestion-chip">What is the baggage allowance?</button>
                             <button type="button" class="suggestion-chip">Cancellation policy</button>
@@ -226,7 +229,10 @@
             </div>
             <div class="modal-body">
                 <p class="small text-muted mb-3">
-                    Configure an open-source API key (OpenRouter, Groq, or Hugging Face) or cloud provider to unlock state-of-the-art conversational intelligence. When no external key is configured, ARMS uses its built-in database-grounded neural travel engine.
+                    Add a provider API key to enable model-generated conversation. OpenRouter is the recommended configurable default; Groq, Hugging Face, and OpenAI are also supported. Without a key, ARMS provides clearly identified rule-based travel guidance.
+                </p>
+                <p class="small text-muted mb-3">
+                    When a provider is active, your message and up to three previous exchanges are sent to that provider. Avoid sharing sensitive personal details. Use Clear conversation to delete the temporary chat history stored in your session.
                 </p>
 
                 <div class="mb-3">
@@ -262,7 +268,7 @@
                         </button>
                     </div>
                     <div class="form-text text-muted small mt-1">
-                        Keys are stored in your active session and never logged. Get a free key at <a href="https://openrouter.ai" target="_blank" rel="noopener" class="text-warning text-decoration-underline">openrouter.ai</a> or <a href="https://console.groq.com" target="_blank" rel="noopener" class="text-warning text-decoration-underline">console.groq.com</a>.
+                        The key stays server-side in your active session and is not returned to the browser after saving. Get a key from <a href="https://openrouter.ai" target="_blank" rel="noopener" class="text-warning text-decoration-underline">OpenRouter</a> or <a href="https://console.groq.com" target="_blank" rel="noopener" class="text-warning text-decoration-underline">Groq</a>.
                     </div>
                 </div>
 
@@ -295,6 +301,7 @@
     const apiKeyInput = document.getElementById('ai-api-key-input');
     const btnSaveAiSettings = document.getElementById('btn-save-ai-settings');
     const btnClearAiKey = document.getElementById('btn-clear-ai-key');
+    const clearChatButton = document.getElementById('clear-chat-button');
     const aiSettingsAlert = document.getElementById('ai-settings-alert');
     const toggleKeyBtn = document.getElementById('toggle-key-visibility');
     const toggleKeyIcon = document.getElementById('toggle-key-icon');
@@ -337,12 +344,12 @@
             success: function(resp) {
                 if (resp && resp.status === 'success') {
                     if (resp.has_key) {
-                        activeEngineBadge.textContent = 'Engine: ' + (resp.provider.toUpperCase()) + ' (' + resp.source + ')';
+                        activeEngineBadge.textContent = 'Real AI: ' + resp.provider.toUpperCase() + ' (' + resp.source + ')';
                         activeEngineBadge.classList.add('connected');
                         if (resp.provider) providerSelect.value = resp.provider;
                         if (resp.model) modelSelect.value = resp.model;
                     } else {
-                        activeEngineBadge.textContent = 'Engine: ARMS Neural Brain';
+                        activeEngineBadge.textContent = 'Guided fallback: API key required for real AI';
                         activeEngineBadge.classList.remove('connected');
                     }
                 }
@@ -411,6 +418,31 @@
                     aiSettingsAlert.textContent = 'Key removed. Switched back to built-in ARMS Neural Engine.';
                     aiSettingsAlert.classList.remove('d-none');
                     checkAiStatus();
+                }
+            });
+        });
+    }
+
+    if (clearChatButton) {
+        clearChatButton.addEventListener('click', function() {
+            clearChatButton.disabled = true;
+            $.ajax({
+                url: "{% url 'travel-chat-api' %}",
+                method: "POST",
+                data: {
+                    action: 'clear_chat',
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                dataType: 'json',
+                success: function() {
+                    chatWindow.innerHTML = '';
+                    addMessage('Conversation cleared. What would you like to plan?', false);
+                },
+                error: function() {
+                    addMessage('Unable to clear the conversation right now. Please try again.', false);
+                },
+                complete: function() {
+                    clearChatButton.disabled = false;
                 }
             });
         });

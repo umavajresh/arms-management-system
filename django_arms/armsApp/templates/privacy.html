@@ -35,20 +35,21 @@
             <div class="legal-shell">
                 <header class="mb-4 pb-3 border-bottom border-secondary border-opacity-25">
                     <h1 class="h3 fw-bold mb-2">Privacy Policy</h1>
-                    <p class="small text-muted mb-0">Effective Date: October 2026. Version 2.0</p>
+                    <p class="small text-muted mb-0">Draft for operator and legal review. Version 2.0</p>
+                    <p class="small text-warning mb-0">Confirm the operator identity, actual retention settings, provider integrations, and privacy contact before publishing.</p>
                 </header>
 
                 <section class="legal-section">
                     <h2 class="h5 fw-semibold mb-2">1. Overview and Scope</h2>
                     <p>
-                        This Privacy Policy explains how the Airline Reservation Management System (ARMS 2.0) collects, uses, protects, and retains passenger data across web portals, guest booking workflows, and AI travel interactions.
+                        This draft describes data handled by the Airline Reservation Management System (ARMS 2.0). The operator must review it against the deployed configuration and applicable law before publication.
                     </p>
                 </section>
 
                 <section class="legal-section">
                     <h2 class="h5 fw-semibold mb-2">2. Information We Collect</h2>
                     <p>
-                        We practice data minimization and collect only information necessary to provide airline reservation services:
+                        Depending on the features used, ARMS may process:
                     </p>
                     <ul>
                         <li>Passenger Details: Full legal name, gender, contact phone number, and email address for booking confirmations.</li>
@@ -61,34 +62,41 @@
                 <section class="legal-section">
                     <h2 class="h5 fw-semibold mb-2">3. Guest Mode and Data Minimization</h2>
                     <p>
-                        Guest users are not required to create an account, provide payment card details, or submit unnecessary personal information. Guest booking records are isolated and accessible only via cryptographically unguessable references combined with secondary passenger verification.
+                        Guest workflows may collect the passenger and contact details required by the booking form. Do not assume a booking reference alone protects a record: the operator must verify that every guest lookup and management action requires the configured secondary verification.
                     </p>
                 </section>
 
                 <section class="legal-section">
                     <h2 class="h5 fw-semibold mb-2">4. Data Storage and Security Controls</h2>
                     <p>
-                        We enforce strict technical and organizational safeguards:
+                        Security depends on the deployment configuration. The operator should verify and maintain, at minimum:
                     </p>
                     <ul>
-                        <li>All database connections and web traffic are protected by TLS encryption with HTTP Strict Transport Security (HSTS).</li>
-                        <li>Passwords are hashed using industry standard PBKDF2 with SHA-256 signatures.</li>
-                        <li>Concurrent seat bookings are protected by database row-level locking to prevent race conditions.</li>
-                        <li>Rate limiting is enforced on authentication and guest lookup endpoints to prevent brute-force attacks.</li>
+                        <li>TLS, secure cookies, and HSTS are enabled at the public deployment boundary.</li>
+                        <li>Authentication uses Django password hashing; the deployed password-hasher configuration must be reviewed.</li>
+                        <li>Use a production database with transaction and locking behavior appropriate for concurrent seat allocation; SQLite does not provide row-level locks.</li>
+                        <li>Configure shared-cache rate limits for authentication, guest lookup, and other sensitive endpoints, and verify their behavior in production.</li>
                     </ul>
                 </section>
 
                 <section class="legal-section">
                     <h2 class="h5 fw-semibold mb-2">5. Third-Party Integrations</h2>
                     <p>
-                        ARMS connects with external aviation telemetry providers (including OpenSky Network and AviationStack) to display live flight radar positions. No passenger personal data is transmitted to external flight tracking providers.
+                        Flight-tracking providers may receive aircraft lookup parameters when that feature is used. The operator must document the providers actually configured. If an external AI provider is configured, the current message, recent conversation context, and relevant ARMS inventory context may be sent to that provider to generate a response. Do not include sensitive passenger information in chat. Without an AI provider key, the assistant uses a local guided fallback.
                     </p>
                 </section>
 
                 <section class="legal-section">
-                    <h2 class="h5 fw-semibold mb-2">6. Your Rights and Contact Information</h2>
+                    <h2 class="h5 fw-semibold mb-2">6. Retention and User Controls</h2>
                     <p>
-                        Registered passengers can review, update, or delete personal preferences at any time via the Profile portal. For data access inquiries or account deletion requests, please contact privacy@arms-aviation.local.
+                        Chat context is kept in the current Django session and can be cleared using the chat interface; actual session expiry depends on the deployed session configuration. Reservation and account records may persist according to the operator's retention obligations and configured deletion process. The operator must publish the applicable retention periods before launch.
+                    </p>
+                </section>
+
+                <section class="legal-section">
+                    <h2 class="h5 fw-semibold mb-2">7. Your Rights and Contact Information</h2>
+                    <p>
+                        Privacy rights and request procedures depend on the operator and applicable law. No verified privacy contact is configured in this draft; the operator must replace this notice with a monitored, valid contact channel before publishing.
                     </p>
                 </section>
 

@@ -1,9 +1,12 @@
 import datetime
+import hashlib
 import json
 import logging
 import os
+import re
 
 import requests
+from django.core.cache import cache
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
@@ -24,6 +27,8 @@ from armsApp.ai_chatbot import (
     get_travel_response,
     extract_travel_preferences,
     search_real_flights,
+    get_llm_provider_status,
+    SUPPORTED_LLM_PROVIDERS,
 )
 logger = logging.getLogger(__name__)
 
@@ -818,9 +823,76 @@ def flight_tracking_api(request):
 
     return JsonResponse({'flight': _flight_tracking_data(flight)})
 
+def _ensure_scheduled_flights(from_airport_id, to_airport_id, departure_dt):
+    """
+    Ensure active bookable flights exist for any valid origin-destination pair on the requested date.
+    Provisions Morning, Afternoon, and Evening slots if none exist.
+    """
+    try:
+        from_airport = models.Airport.objects.filter(id=from_airport_id, delete_flag=0).first()
+        to_airport = models.Airport.objects.filter(id=to_airport_id, delete_flag=0).first()
+        if not from_airport or not to_airport or str(from_airport.id) == str(to_airport.id):
+            return
+
+        date_obj = departure_dt.date() if isinstance(departure_dt, datetime.datetime) else departure_dt
+        if date_obj < timezone.localdate():
+            return
+
+        existing = models.Flights.objects.filter(
+            delete_flag=0,
+            from_airport=from_airport,
+            to_airport=to_airport,
+            departure__year=date_obj.year,
+            departure__month=date_obj.month,
+            departure__day=date_obj.day,
+        )
+        if existing.exists():
+            return
+
+        airline = models.Airlines.objects.filter(status='1').first() or models.Airlines.objects.first()
+        aircraft = models.Aircraft.objects.filter(status='1', code__in=['A320', 'B738', 'A21N']).first() or models.Aircraft.objects.first()
+        is_domestic = (from_airport.country == 'India' and to_airport.country == 'India')
+
+        slots = [
+            (8, 15, 1, 3850.0 if is_domestic else 24500.0, 11500.0 if is_domestic else 58000.0),
+            (14, 30, 2, 4200.0 if is_domestic else 26800.0, 12800.0 if is_domestic else 64000.0),
+            (19, 45, 3, 4650.0 if is_domestic else 28900.0, 14200.0 if is_domestic else 72000.0),
+        ]
+
+        for hour, minute, flight_num, eco_p, biz_p in slots:
+            dep_dt = timezone.make_aware(datetime.datetime.combine(date_obj, datetime.time(hour, minute)))
+            if dep_dt <= timezone.now():
+                continue
+            arr_dt = dep_dt + datetime.timedelta(hours=2, minutes=10)
+            code = f"AR{from_airport.code[:2]}{to_airport.code[:2]}{flight_num}{date_obj.day:02d}"
+            if models.Flights.objects.filter(code=code).exists():
+                code = f"{code}-{date_obj.strftime('%m%d')}"
+
+            models.Flights.objects.create(
+                code=code,
+                airline=airline,
+                from_airport=from_airport,
+                to_airport=to_airport,
+                aircraft=aircraft,
+                departure=dep_dt,
+                estimated_arrival=arr_dt,
+                business_class_slots=aircraft.business_capacity if aircraft else 12,
+                economy_slots=aircraft.economy_capacity if aircraft else 168,
+                business_class_price=biz_p,
+                economy_price=eco_p,
+                currency="INR",
+                delete_flag=0,
+            )
+    except Exception:
+        pass
+
+
 def search_result(request, fromA=None, toA=None, departure = None):
     context = context_data()
     context['page'] = 'Search Result'
+    context['nearby_flights'] = []
+    context['filter_relaxed'] = False
+    context['unfiltered_count'] = 0
     
     # Fallback to GET or POST parameters if positional args are omitted
     if fromA is None:
@@ -863,8 +935,12 @@ def search_result(request, fromA=None, toA=None, departure = None):
         # Base query with departure time validation
         from django.utils import timezone
         current_time = timezone.now()
+
+        # Ensure scheduled flights exist for any valid future route
+        if departure_dt.date() >= timezone.localdate():
+            _ensure_scheduled_flights(fromA, toA, departure_dt)
         
-        flights = models.Flights.objects.filter(
+        base_query = models.Flights.objects.filter(
             delete_flag=0,
             from_airport=fromA,
             to_airport=toA,
@@ -873,6 +949,7 @@ def search_result(request, fromA=None, toA=None, departure = None):
             departure__day=day,
             departure__gt=current_time  # Only show flights that haven't departed yet
         )
+        flights = base_query
         
         # Apply price filters if provided
         if min_price and min_price.isdigit():
@@ -908,13 +985,30 @@ def search_result(request, fromA=None, toA=None, departure = None):
             # Default sort by departure time
             flights = flights.order_by('departure')
         
-        # Store results in context
-        context['flights'] = flights.all()
+        # Check if filters eliminated all flights on this date
+        has_filters = bool(time_filter or min_price or max_price)
+        if not flights.exists() and has_filters and base_query.exists():
+            context['filter_relaxed'] = True
+            context['unfiltered_count'] = base_query.count()
+            context['flights'] = base_query.order_by('departure')
+        elif not flights.exists():
+            # Check for nearby flights on this route
+            nearby = models.Flights.objects.filter(
+                delete_flag=0,
+                from_airport=fromA,
+                to_airport=toA,
+                departure__gt=current_time
+            ).order_by('departure')[:6]
+            context['nearby_flights'] = nearby
+            context['flights'] = []
+        else:
+            context['flights'] = flights.all()
         
         # Get min and max prices for the price range slider
-        if flights.exists():
-            context['min_available_price'] = flights.aggregate(Min('economy_price'))['economy_price__min']
-            context['max_available_price'] = flights.aggregate(Max('business_class_price'))['business_class_price__max']
+        flights_for_price = context['flights'] if context['flights'] else base_query
+        if flights_for_price.exists():
+            context['min_available_price'] = flights_for_price.aggregate(Min('economy_price'))['economy_price__min']
+            context['max_available_price'] = flights_for_price.aggregate(Max('business_class_price'))['business_class_price__max']
         else:
             context['min_available_price'] = 0
             context['max_available_price'] = 1000
@@ -1359,6 +1453,75 @@ def travel_chat(request):
     return render(request, 'travel_chat.html', context)
 
 
+def _ai_chat_rate_limited(request):
+    client_ip = request.META.get('REMOTE_ADDR', '')
+    ip_hash = hashlib.sha256(client_ip.encode('utf-8')).hexdigest()[:24]
+    cache_key = f'arms:ai-chat:{ip_hash}'
+    if cache.add(cache_key, 1, timeout=60):
+        return False
+    try:
+        request_count = cache.incr(cache_key)
+    except ValueError:
+        if cache.add(cache_key, 1, timeout=60):
+            return False
+        request_count = cache.get(cache_key, 1)
+    return request_count > 30
+
+
+def _guest_action_rate_limited(request, action):
+    client_ip = request.META.get('REMOTE_ADDR', '')
+    ip_hash = hashlib.sha256(client_ip.encode('utf-8')).hexdigest()[:24]
+    cache_key = f'arms:guest-{action}:{ip_hash}'
+    if cache.add(cache_key, 1, timeout=600):
+        return False
+    try:
+        request_count = cache.incr(cache_key)
+    except ValueError:
+        if cache.add(cache_key, 1, timeout=600):
+            return False
+        request_count = cache.get(cache_key, 6)
+    return request_count > 5
+
+
+def _merge_chat_preferences(request, current_preferences):
+    previous = request.session.get('ai_travel_preferences', {})
+    if not isinstance(previous, dict):
+        previous = {}
+
+    merged = dict(current_preferences)
+    for field in ('budget', 'days', 'origin', 'destination', 'month', 'preferences'):
+        if not merged.get(field):
+            merged[field] = previous.get(field)
+
+    message = current_preferences.get('message', '').lower()
+    explicitly_changed_trip_type = any(
+        term in message for term in ('domestic', 'international', 'abroad', 'overseas')
+    )
+    if (
+        not explicitly_changed_trip_type
+        and not current_preferences.get('destination')
+        and previous.get('trip_type') in ('domestic', 'international')
+    ):
+        merged['trip_type'] = previous['trip_type']
+
+    if merged.get('days') is not None:
+        try:
+            merged['days'] = min(max(int(merged['days']), 1), 60)
+        except (TypeError, ValueError):
+            merged['days'] = None
+    merged['budget'] = merged.get('budget') if isinstance(merged.get('budget'), (int, float)) else None
+    merged['preferences'] = [
+        preference for preference in (merged.get('preferences') or [])
+        if isinstance(preference, str) and len(preference) <= 80
+    ][:8]
+
+    request.session['ai_travel_preferences'] = {
+        field: merged.get(field)
+        for field in ('budget', 'days', 'origin', 'destination', 'month', 'preferences', 'trip_type')
+    }
+    return merged
+
+
 def travel_chat_api(request):
     """
     AI Travel Assistant API for ARMS.
@@ -1392,9 +1555,24 @@ def travel_chat_api(request):
     action = request.POST.get('action')
     if action == 'save_ai_settings':
         api_key = request.POST.get('api_key', '').strip()
-        provider = request.POST.get('provider', '').strip()
+        provider = request.POST.get('provider', 'auto').strip().lower()
         model = request.POST.get('model', '').strip()
         clear_key = request.POST.get('clear_key') == '1'
+        if provider not in (*SUPPORTED_LLM_PROVIDERS, 'auto'):
+            return JsonResponse({
+                'status': 'failed',
+                'message': 'Choose a supported AI provider.',
+            }, status=400)
+        if (
+            len(api_key) > 512
+            or any(char in api_key for char in '\r\n')
+            or len(model) > 128
+            or any(char in model for char in '\r\n')
+        ):
+            return JsonResponse({
+                'status': 'failed',
+                'message': 'The API key or model name is invalid.',
+            }, status=400)
         if clear_key:
             request.session.pop('ai_api_key', None)
         elif api_key:
@@ -1404,26 +1582,62 @@ def travel_chat_api(request):
         return JsonResponse({'status': 'success', 'message': 'AI configuration saved.'})
 
     if action == 'get_ai_status':
-        env_key = os.getenv('OPENROUTER_API_KEY') or os.getenv('GROQ_API_KEY') or os.getenv('HUGGINGFACE_API_KEY') or os.getenv('OPENAI_API_KEY') or os.getenv('AI_API_KEY')
-        has_session_key = bool(request.session.get('ai_api_key'))
-        has_key = has_session_key or bool(env_key)
+        ai_status = get_llm_provider_status(
+            api_key=request.session.get('ai_api_key'),
+            provider=request.session.get('ai_provider', 'auto'),
+        )
         return JsonResponse({
             'status': 'success',
-            'has_key': has_key,
-            'source': 'session' if has_session_key else ('environment' if env_key else 'neural_engine'),
-            'provider': request.session.get('ai_provider', 'auto'),
+            **ai_status,
             'model': request.session.get('ai_model', 'default'),
         })
+
+    if action == 'clear_chat':
+        request.session.pop('ai_chat_history', None)
+        request.session.pop('ai_travel_preferences', None)
+        return JsonResponse({'status': 'success', 'message': 'Conversation cleared.'})
+
+    if _ai_chat_rate_limited(request):
+        return JsonResponse({
+            'status': 'failed',
+            'message': 'You have sent too many messages. Please wait one minute and try again.',
+        }, status=429)
 
     # Tool execution pathway for direct UI tool calls
     tool_name = request.POST.get('tool_name')
     if tool_name:
+        raw_tool_args = request.POST.get('tool_args', '{}')
+        if len(raw_tool_args) > 4000:
+            return JsonResponse({
+                'status': 'failed',
+                'message': 'The requested tool input is too large.',
+            }, status=400)
         from armsApp.ai_chatbot import execute_travel_tool
         try:
-            tool_args = json.loads(request.POST.get('tool_args', '{}'))
+            tool_args = json.loads(raw_tool_args)
         except (json.JSONDecodeError, TypeError):
-            tool_args = {}
-        tool_res = execute_travel_tool(tool_name, tool_args)
+            return JsonResponse({
+                'status': 'failed',
+                'message': 'The requested tool input is not valid JSON.',
+            }, status=400)
+        if not isinstance(tool_args, dict):
+            return JsonResponse({
+                'status': 'failed',
+                'message': 'Tool input must be a JSON object.',
+            }, status=400)
+        try:
+            tool_res = execute_travel_tool(tool_name, tool_args)
+        except Exception:
+            logger.exception("Travel tool request failed: tool=%s", tool_name)
+            return JsonResponse({
+                'status': 'failed',
+                'message': 'The requested travel data is temporarily unavailable.',
+            }, status=503)
+        if isinstance(tool_res, dict) and tool_res.get('error'):
+            return JsonResponse({
+                'status': 'failed',
+                'message': tool_res['error'],
+            }, status=400)
         return JsonResponse({'status': 'success', 'tool_result': tool_res})
 
     if not message:
@@ -1435,18 +1649,28 @@ def travel_chat_api(request):
             content_type='application/json',
             status=400
         )
+    if len(message) > 2000:
+        return JsonResponse({
+            'status': 'failed',
+            'message': 'Please keep each message under 2,000 characters.',
+        }, status=400)
+    if language not in {'en', 'es', 'fr', 'de', 'ja', 'hi'}:
+        return JsonResponse({
+            'status': 'failed',
+            'message': 'Choose one of the supported chat languages.',
+        }, status=400)
 
     # ---------------------------------------------------------
     # 3. Extract travel preferences
     # ---------------------------------------------------------
     try:
-        prefs = extract_travel_preferences(message)
-    except Exception as e:
+        prefs = _merge_chat_preferences(request, extract_travel_preferences(message))
+    except Exception:
+        logger.exception("Unable to parse travel preferences")
         return HttpResponse(
             json.dumps({
                 'status': 'failed',
                 'message': 'Unable to understand your travel preferences.',
-                'error': str(e)
             }),
             content_type='application/json',
             status=500
@@ -1457,8 +1681,11 @@ def travel_chat_api(request):
     # ---------------------------------------------------------
     try:
         flights = search_real_flights(prefs)
-    except Exception as e:
+        inventory_available = True
+    except Exception:
+        logger.exception("Unable to search ARMS flight inventory for chatbot request")
         flights = []
+        inventory_available = False
 
     # ---------------------------------------------------------
     # 6. Generate a plan grounded in matching flight inventory
@@ -1478,6 +1705,7 @@ def travel_chat_api(request):
             api_key=api_key_override,
             ai_provider=ai_provider,
             ai_model=ai_model,
+            travel_preferences=prefs,
         )
     except Exception as e:
         logger.exception("Chatbot response error")
@@ -1485,12 +1713,20 @@ def travel_chat_api(request):
             "I could not generate the full travel plan right now. "
             "Please try again, or search the flight inventory directly."
         )
+    if not inventory_available:
+        response += (
+            "\n\nARMS flight inventory could not be checked for this request. "
+            "No flight availability or fare is confirmed."
+        )
 
     # Maintain bounded session memory
-    history = request.session.get('ai_chat_history', [])
-    history.append({'role': 'user', 'content': message[:300]})
-    history.append({'role': 'assistant', 'content': response[:600]})
-    request.session['ai_chat_history'] = history[-10:]
+    if not re.search(r'\bGUEST-[A-Z0-9]{4}-[A-Z0-9]{4}\b', message, re.IGNORECASE):
+        history = request.session.get('ai_chat_history', [])
+        if not isinstance(history, list):
+            history = []
+        history.append({'role': 'user', 'content': message[:300]})
+        history.append({'role': 'assistant', 'content': response[:600]})
+        request.session['ai_chat_history'] = history[-10:]
 
     # ---------------------------------------------------------
     # 7. Build response
@@ -1505,6 +1741,7 @@ def travel_chat_api(request):
         'flights': flights,
 
         'flight_count': len(flights),
+        'inventory_available': inventory_available,
     }
 
     # ---------------------------------------------------------
@@ -2161,7 +2398,19 @@ def booking_confirmation(request, reference=None):
     if not reference:
         return redirect('public-page')
 
-    reservations = models.Reservation.objects.filter(booking_reference=reference).select_related(
+    reference = reference.strip().upper()
+    session_authorized = reference in {
+        request.session.get('last_guest_reference'),
+        request.session.get('verified_guest_reference'),
+    }
+    if not session_authorized and not request.user.is_authenticated:
+        messages.error(request, "Verify your passenger details through Guest Booking Lookup before viewing reservation details.")
+        return redirect('guest-booking')
+
+    reservations = models.Reservation.objects.filter(booking_reference=reference)
+    if not session_authorized:
+        reservations = reservations.filter(user=request.user)
+    reservations = reservations.select_related(
         'flight', 'flight__airline', 'flight__from_airport', 'flight__to_airport'
     )
     if not reservations.exists():
@@ -2184,18 +2433,18 @@ def guest_booking(request):
     context['can_cancel'] = False
 
     if request.method == 'POST':
-        failed_attempts = request.session.get('guest_lookup_fails', 0)
-        last_attempt_time = request.session.get('guest_lookup_time', 0)
-        current_time = timezone.now().timestamp()
-
-        if failed_attempts >= 5 and (current_time - last_attempt_time) < 600:
+        if _guest_action_rate_limited(request, 'lookup'):
             messages.error(request, "Too many lookup attempts. Please wait 10 minutes before trying again.")
             return render(request, 'guest_booking.html', context)
 
         reference = (request.POST.get('reference') or '').strip().upper()
-        verification_field = (request.POST.get('verification') or '').strip().lower()
+        verification_field = (request.POST.get('verification') or '').strip().casefold()
 
-        if not reference or not verification_field:
+        if (
+            not re.fullmatch(r'GUEST-[A-Z0-9]{4}-[A-Z0-9]{4}', reference)
+            or not verification_field
+            or len(verification_field) > 254
+        ):
             messages.error(request, "Please enter both the booking reference and passenger email or last name.")
             return render(request, 'guest_booking.html', context)
 
@@ -2204,15 +2453,13 @@ def guest_booking(request):
         ).select_related('flight', 'flight__airline', 'flight__from_airport', 'flight__to_airport').first()
 
         if reservation and (
-            reservation.email.lower() == verification_field
-            or reservation.last_name.lower() == verification_field
+            constant_time_compare(reservation.email.casefold(), verification_field)
+            or constant_time_compare(reservation.last_name.casefold(), verification_field)
         ):
-            request.session['guest_lookup_fails'] = 0
+            request.session['verified_guest_reference'] = reference
             context['found_reservation'] = reservation
             context['can_cancel'] = reservation.can_cancel()
         else:
-            request.session['guest_lookup_fails'] = failed_attempts + 1
-            request.session['guest_lookup_time'] = current_time
             messages.error(request, "No reservation found matching the provided reference and passenger verification.")
 
     return render(request, 'guest_booking.html', context)
@@ -2222,19 +2469,29 @@ def cancel_guest_reservation(request):
     if request.method != 'POST':
         return JsonResponse({'status': 'failed', 'msg': 'A POST request is required.'}, status=405)
 
-    reference = (request.POST.get('reference') or '').strip().upper()
-    verification = (request.POST.get('verification') or '').strip().lower()
+    if _guest_action_rate_limited(request, 'cancel'):
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Too many cancellation attempts. Please wait 10 minutes before trying again.'},
+            status=429,
+        )
 
-    if not reference or not verification:
+    reference = (request.POST.get('reference') or '').strip().upper()
+    verification = (request.POST.get('verification') or '').strip().casefold()
+
+    if (
+        not re.fullmatch(r'GUEST-[A-Z0-9]{4}-[A-Z0-9]{4}', reference)
+        or not verification
+        or len(verification) > 254
+    ):
         return JsonResponse({'status': 'failed', 'msg': 'Missing required verification details.'}, status=400)
 
     reservation = models.Reservation.objects.filter(booking_reference=reference).first()
     if not reservation:
         return JsonResponse({'status': 'failed', 'msg': 'Reservation not found.'}, status=404)
 
-    if (
-        reservation.email.lower() != verification
-        and reservation.last_name.lower() != verification
+    if not (
+        constant_time_compare(reservation.email.casefold(), verification)
+        or constant_time_compare(reservation.last_name.casefold(), verification)
     ):
         return JsonResponse({'status': 'failed', 'msg': 'Verification failed. Passenger details do not match.'}, status=403)
 
@@ -2273,4 +2530,3 @@ def update_travel_preferences(request):
         pref.save()
         messages.success(request, "Your travel preferences have been updated.")
     return redirect('profile-page')
-

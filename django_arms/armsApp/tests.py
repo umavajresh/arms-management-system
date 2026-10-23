@@ -4,16 +4,23 @@ from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import check_password, make_password
+from django.core.cache import cache
 from django.core.management import call_command
-from django.test import Client, SimpleTestCase, TestCase
+from django.test import Client, RequestFactory, SimpleTestCase, TestCase
 from django.utils import timezone
 from django.urls import reverse
 
 from armsApp import models
 from armsApp.models import Aircraft, Airport, Airlines, Flights, Reservation, UserProfile
-from armsApp.views import _fetch_live_flight_data
+from armsApp.views import _ai_chat_rate_limited, _fetch_live_flight_data
 
-from armsApp.ai_chatbot import extract_travel_preferences, get_travel_response, search_real_flights
+from armsApp.ai_chatbot import (
+    _build_llm_grounding_context,
+    extract_travel_preferences,
+    get_llm_provider_status,
+    get_travel_response,
+    search_real_flights,
+)
 
 
 class LoginAuthenticationTests(TestCase):
@@ -766,20 +773,58 @@ class TravelChatbotTests(SimpleTestCase):
 
     def test_chatbot_answers_baggage_policy(self):
         response = get_travel_response("What is the baggage allowance?")
-        self.assertIn("Baggage Policy", response)
-        self.assertIn("7 kg", response)
-        self.assertIn("15 kg", response)
+        self.assertIn("authoritative baggage-policy source", response)
+        self.assertIn("official website", response)
+        self.assertNotIn("7 kg", response)
 
     def test_chatbot_answers_cancellation_policy(self):
         response = get_travel_response("How can I cancel my booking?")
-        self.assertIn("Cancellation & Refund Guidelines", response)
+        self.assertIn("This only updates the ARMS record", response)
         self.assertIn("My Bookings", response)
 
     def test_chatbot_answers_check_in_timing(self):
         response = get_travel_response("What are the airport check-in times?")
-        self.assertIn("Check-in & Boarding Information", response)
-        self.assertIn("Domestic Flights", response)
-        self.assertIn("International Flights", response)
+        self.assertIn("no authoritative check-in or boarding-time source", response)
+        self.assertIn("official itinerary", response)
+
+    def test_auto_provider_uses_matching_environment_key(self):
+        with patch.dict('os.environ', {'OPENROUTER_API_KEY': 'sk-or-test-key'}, clear=True):
+            status = get_llm_provider_status(provider='auto')
+
+        self.assertEqual(status, {
+            'has_key': True,
+            'provider': 'openrouter',
+            'source': 'environment',
+        })
+
+    def test_model_handles_faq_with_conversation_context_and_requested_language(self):
+        with (
+            patch('armsApp.ai_chatbot._build_llm_grounding_context', return_value='Verified baggage policy facts.'),
+            patch('armsApp.ai_chatbot.call_external_llm', return_value='Réponse personnalisée.') as llm_call,
+        ):
+            response = get_travel_response(
+                'What is the baggage allowance?',
+                language='fr',
+                session_context=[
+                    {'role': 'user', 'content': 'I am planning a trip to Paris.'},
+                    {'role': 'assistant', 'content': 'How long will you stay?'},
+                ],
+                api_key='test-provider-key',
+                ai_provider='openrouter',
+            )
+
+        self.assertEqual(response, 'Réponse personnalisée.')
+        messages = llm_call.call_args.kwargs['messages']
+        self.assertIn('Respond in French', messages[0]['content'])
+        self.assertEqual(messages[1]['content'], 'I am planning a trip to Paris.')
+        self.assertEqual(messages[-1]['content'], 'What is the baggage allowance?')
+
+    def test_empty_flight_search_does_not_add_unfiltered_inventory_to_ai_context(self):
+        with patch('armsApp.ai_chatbot.Flights.objects.filter') as flight_query:
+            context = _build_llm_grounding_context([])
+
+        flight_query.assert_not_called()
+        self.assertIn('No matching scheduled flights', context)
 
     def test_extract_travel_preferences_for_kadapa_under_12000(self):
         prefs = extract_travel_preferences("plan a trip to Kadapa under₹12000")
@@ -790,7 +835,7 @@ class TravelChatbotTests(SimpleTestCase):
     def test_kadapa_trip_response_matches_user_destination_and_budget(self):
         response = get_travel_response("plan a trip to Kadapa under₹12000")
         self.assertIn("Kadapa", response)
-        self.assertIn("within budget", response)
+        self.assertIn("within the supplied budget", response)
         self.assertIn("Gandikota", response)
         self.assertIn("Belum Caves", response)
         self.assertNotIn("Singapore", response)
@@ -807,7 +852,64 @@ class TravelChatbotTests(SimpleTestCase):
 
     def test_price_chart_inquiry(self):
         response = get_travel_response("show fare breakdown price chart")
-        self.assertTrue("Price Breakdown" in response or "Fare Breakdown" in response or "Base Airfare" in response)
+        self.assertIn("provide a flight code", response)
+
+
+class TravelChatbotApiTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+
+    def test_chat_api_carries_trip_preferences_into_follow_up_turns(self):
+        with (
+            patch('armsApp.views.search_real_flights', return_value=[]),
+            patch('armsApp.views.get_travel_response', return_value='Travel response') as response_mock,
+        ):
+            first = self.client.post(reverse('travel-chat-api'), {
+                'message': 'Plan a 3-day trip to Tokyo under INR 50000',
+            })
+            follow_up = self.client.post(reverse('travel-chat-api'), {
+                'message': 'Make it more cultural',
+            })
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(follow_up.status_code, 200)
+        carried_preferences = response_mock.call_args.kwargs['travel_preferences']
+        self.assertEqual(carried_preferences['destination'], 'Tokyo')
+        self.assertEqual(carried_preferences['budget'], 50000)
+        self.assertEqual(carried_preferences['days'], 3)
+
+    def test_clear_chat_removes_session_memory(self):
+        session = self.client.session
+        session['ai_chat_history'] = [{'role': 'user', 'content': 'Plan a trip'}]
+        session['ai_travel_preferences'] = {'destination': 'Tokyo'}
+        session.save()
+
+        response = self.client.post(reverse('travel-chat-api'), {'action': 'clear_chat'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('ai_chat_history', self.client.session)
+        self.assertNotIn('ai_travel_preferences', self.client.session)
+
+    def test_chat_api_rejects_oversized_messages(self):
+        response = self.client.post(reverse('travel-chat-api'), {'message': 'x' * 2001})
+        self.assertEqual(response.status_code, 400)
+
+    def test_ai_settings_reject_unsupported_provider(self):
+        response = self.client.post(reverse('travel-chat-api'), {
+            'action': 'save_ai_settings',
+            'provider': 'untrusted-provider',
+        })
+        self.assertEqual(response.status_code, 400)
+
+    def test_ai_rate_limit_allows_thirty_requests_and_rejects_the_next(self):
+        request = RequestFactory().post('/travel_chat_api')
+        request.META['REMOTE_ADDR'] = '192.0.2.10'
+
+        results = [_ai_chat_rate_limited(request) for _ in range(31)]
+
+        self.assertEqual(results[:30], [False] * 30)
+        self.assertTrue(results[30])
 
 
 class TravelFlightSearchTests(TestCase):
@@ -1034,6 +1136,7 @@ class TwoFactorAuthenticationTests(TestCase):
 
 class GuestReservationFlowTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.airline = models.Airlines.objects.create(name='Global Airways')
         self.airport_a = models.Airport.objects.create(code='AAA', name='Alpha Airport')
         self.airport_b = models.Airport.objects.create(code='BBB', name='Beta Airport')
@@ -1131,6 +1234,45 @@ class GuestReservationFlowTests(TestCase):
         self.assertEqual(resp_fail.status_code, 200)
         self.assertContains(resp_fail, 'No reservation found matching')
 
+    def test_guest_confirmation_requires_recent_session_authorization(self):
+        reservation = models.Reservation.objects.create(
+            flight=self.flight,
+            user=None,
+            is_guest=True,
+            first_name='Taylor',
+            last_name='Guest',
+            gender='Female',
+            email='taylor.guest@example.com',
+            contact='555-1111',
+            seat_number='E1A',
+            type='2',
+        )
+        confirmation_url = reverse(
+            'booking-confirmation',
+            kwargs={'reference': reservation.booking_reference},
+        )
+
+        unauthorized = self.client.get(confirmation_url)
+        self.assertRedirects(unauthorized, reverse('guest-booking'))
+
+        verified = self.client.post(reverse('guest-booking'), {
+            'reference': reservation.booking_reference,
+            'verification': reservation.email,
+        })
+        self.assertEqual(verified.status_code, 200)
+        authorized = self.client.get(confirmation_url)
+        self.assertEqual(authorized.status_code, 200)
+        self.assertContains(authorized, 'Taylor Guest')
+
+    def test_guest_cancellation_attempts_are_rate_limited_by_ip(self):
+        responses = [
+            self.client.post(reverse('cancel-guest-reservation'), {})
+            for _ in range(6)
+        ]
+
+        self.assertEqual([response.status_code for response in responses[:5]], [400] * 5)
+        self.assertEqual(responses[5].status_code, 429)
+
     def test_cancel_guest_reservation(self):
         res = models.Reservation.objects.create(
             flight=self.flight,
@@ -1224,8 +1366,8 @@ class MultilingualAndToolChatbotTests(TestCase):
 
     def test_multilingual_spanish_faq(self):
         response = get_travel_response("¿Cuál es la política de equipaje?", language='es')
-        self.assertIn("Política de equipaje", response)
-        self.assertIn("7 kg", response)
+        self.assertIn("fuente oficial de equipaje", response)
+        self.assertNotIn("7 kg", response)
 
     def test_execute_travel_tool_search_flights(self):
         from armsApp.ai_chatbot import execute_travel_tool
@@ -1240,6 +1382,122 @@ class MultilingualAndToolChatbotTests(TestCase):
         self.assertIsInstance(result, dict)
         self.assertEqual(result['code'], 'SK101')
         self.assertEqual(result['airline'], 'Skyline Air')
+
+    def test_guest_reservation_tool_requires_both_passenger_verifiers(self):
+        from armsApp.ai_chatbot import execute_travel_tool
+
+        reservation = Reservation.objects.create(
+            flight=self.flight,
+            user=None,
+            is_guest=True,
+            first_name='Alex',
+            last_name='Morgan',
+            gender='Female',
+            email='alex.morgan@example.com',
+            contact='555-9876',
+            seat_number='E1B',
+            type='2',
+        )
+
+        missing_verifier = execute_travel_tool('lookup_reservation', {
+            'reference': reservation.booking_reference,
+            'email': 'alex.morgan@example.com',
+        })
+        verified = execute_travel_tool('lookup_reservation', {
+            'reference': reservation.booking_reference,
+            'email': 'alex.morgan@example.com',
+            'last_name': 'Morgan',
+        })
+
+        self.assertIn('error', missing_verifier)
+        self.assertEqual(verified['reference'], reservation.booking_reference)
+
+    def test_execute_travel_tool_rejects_invalid_arguments(self):
+        from armsApp.ai_chatbot import execute_travel_tool
+
+        self.assertIn('error', execute_travel_tool('search_flights', []))
+        self.assertIn(
+            'positive finite number',
+            execute_travel_tool('search_flights', {'max_price': float('nan')})['error'],
+        )
+        self.assertIn(
+            'unsupported fields',
+            execute_travel_tool('search_flights', {'origin': 'Chennai', 'delete_all': True})['error'],
+        )
+
+    def test_unknown_destination_does_not_receive_synthetic_prices_or_routes(self):
+        from armsApp.ai_chatbot import _build_local_recommendations
+
+        self.assertEqual(
+            _build_local_recommendations({
+                'destination': 'Atlantis',
+                'trip_type': 'international',
+                'days': 3,
+            }),
+            [],
+        )
+        response = get_travel_response('Plan a trip to Atlantis')
+        self.assertIn('do not have a verified destination guide', response)
+        self.assertNotIn('nearest hub', response.lower())
+
+    def test_price_lookup_does_not_substitute_an_unrequested_flight(self):
+        response = get_travel_response('price chart for flight ZX999')
+        self.assertIn('No matching flight fare is recorded', response)
+        self.assertNotIn('SK101', response)
+
+    def test_ai_tool_call_is_executed_and_followed_by_a_grounded_completion(self):
+        from armsApp.ai_chatbot import call_external_llm
+
+        tool_response = Mock(status_code=200)
+        tool_response.json.return_value = {
+            'choices': [{
+                'message': {
+                    'content': None,
+                    'tool_calls': [{
+                        'id': 'call_flights_1',
+                        'type': 'function',
+                        'function': {
+                            'name': 'search_flights',
+                            'arguments': json.dumps({'origin': 'Chennai', 'destination': 'Dubai'}),
+                        },
+                    }],
+                },
+            }],
+        }
+        final_response = Mock(status_code=200)
+        final_response.json.return_value = {
+            'choices': [{'message': {'content': 'ARMS lists flight SK101.'}}],
+        }
+
+        with patch('armsApp.ai_chatbot.requests.post', side_effect=[tool_response, final_response]) as request:
+            result = call_external_llm(
+                [{'role': 'user', 'content': 'Find a flight from Chennai to Dubai.'}],
+                api_key='sk-or-test-key',
+                provider='openrouter',
+            )
+
+        self.assertEqual(result, 'ARMS lists flight SK101.')
+        self.assertEqual(request.call_count, 2)
+        first_payload = request.call_args_list[0].kwargs['json']
+        tool_names = {tool['function']['name'] for tool in first_payload['tools']}
+        self.assertEqual(
+            tool_names,
+            {'search_flights', 'get_flight_details', 'get_price_chart'},
+        )
+        final_messages = request.call_args_list[1].kwargs['json']['messages']
+        self.assertTrue(any(message.get('role') == 'tool' and 'SK101' in message['content'] for message in final_messages))
+        self.assertNotIn('tools', request.call_args_list[1].kwargs['json'])
+
+    def test_chat_booking_reference_is_routed_to_verified_portal(self):
+        with patch('armsApp.ai_chatbot.call_external_llm') as model_call:
+            response = get_travel_response(
+                'Please look up GUEST-AB12-CD34',
+                api_key='sk-or-test-key',
+                ai_provider='openrouter',
+            )
+
+        self.assertIn('Guest Booking Lookup', response)
+        model_call.assert_not_called()
 
     def test_chatbot_greeting_response_does_not_default_to_goa(self):
         response = get_travel_response("Hello")
@@ -1275,6 +1533,3 @@ class MultilingualAndToolChatbotTests(TestCase):
         status_data = status_resp.json()
         self.assertTrue(status_data['has_key'])
         self.assertEqual(status_data['provider'], 'openrouter')
-
-
-

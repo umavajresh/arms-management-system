@@ -8,27 +8,63 @@
     }
     
     /* Filter panel styling */
-    .filter-panel {
-        transition: all 0.3s ease;
+    .filter-card {
+        background-color: var(--arms-surface, #131924) !important;
+        border: 1px solid var(--arms-border, #263345) !important;
+        color: var(--arms-text, #e2e8f0) !important;
     }
-    
-    .filter-panel:hover {
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+
+    .form-control, .form-select {
+        background-color: #0b0f17 !important;
+        border: 1px solid #334155 !important;
+        color: #f8fafc !important;
+        font-weight: 500;
     }
-    
-    .filter-header {
-        cursor: pointer;
+
+    .form-control:focus, .form-select:focus {
+        background-color: #0b0f17 !important;
+        border-color: var(--arms-gold, #c5a880) !important;
+        color: #ffffff !important;
+        box-shadow: 0 0 0 2px rgba(197, 168, 128, 0.25) !important;
+    }
+
+    .form-select option {
+        background-color: #131924 !important;
+        color: #f8fafc !important;
+        padding: 6px 10px;
+    }
+
+    .input-group-text {
+        background-color: var(--arms-card, #182230) !important;
+        border: 1px solid #334155 !important;
+        color: var(--arms-gold, #c5a880) !important;
+        font-weight: 600;
+    }
+
+    .form-control::placeholder {
+        color: #94a3b8 !important;
+        opacity: 1;
+    }
+
+    .form-label {
+        color: #e2e8f0 !important;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
     /* Flight card styling */
     .flight-card {
-        transition: transform 0.2s ease;
-        border-left: 4px solid transparent;
+        background-color: var(--arms-surface, #131924) !important;
+        border: 1px solid var(--arms-border, #263345) !important;
+        color: var(--arms-text, #e2e8f0) !important;
+        transition: transform 0.2s ease, border-color 0.2s ease;
     }
     
     .flight-card:hover {
-        transform: translateY(-5px);
-        border-left: 4px solid #0d6efd;
+        transform: translateY(-3px);
+        border-color: var(--arms-gold, #c5a880) !important;
     }
     
     /* Price badge styling */
@@ -36,11 +72,13 @@
         position: absolute;
         top: 10px;
         right: 10px;
-        background-color: #28a745;
-        color: white;
-        padding: 5px 10px;
-        border-radius: 20px;
+        background-color: #15803d;
+        color: #ffffff;
+        padding: 5px 12px;
+        border-radius: 4px;
         font-weight: bold;
+        font-size: 0.85rem;
+        border: 1px solid #16a34a;
     }
     
     /* Time of day indicators */
@@ -53,24 +91,24 @@
     }
     
     .time-morning {
-        background-color: #ffc107; /* Yellow */
+        background-color: #eab308;
     }
     
     .time-afternoon {
-        background-color: #fd7e14; /* Orange */
+        background-color: #f97316;
     }
     
     .time-evening {
-        background-color: #6f42c1; /* Purple */
+        background-color: #a855f7;
     }
     
     .time-night {
-        background-color: #343a40; /* Dark */
+        background-color: #64748b;
     }
 </style>
 <section class="py-4">
     <div class="container">
-        <h3 class="fw-bolder text-center">Search Result</h3>
+        <h3 class="fw-bolder text-center text-light">Search Result</h3>
         <center>
             <hr class="bg-primary opacity-100" style="height:3px" width="5%">
         </center>
@@ -78,16 +116,17 @@
         <!-- Filter and Sort Section -->
         <div class="row mb-4">
             <div class="col-lg-10 col-md-12 mx-auto">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h4 class="m-0">Filter & Sort Options</h4>
+                <div class="card filter-card rounded-0">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center" style="background: var(--arms-card, #182230); border-bottom: 1px solid var(--arms-border, #263345);">
+                        <h4 class="m-0 h6 fw-bold text-light"><i class="fas fa-sliders-h me-2 text-warning"></i>Filter & Sort Options</h4>
+                        <span class="small text-muted">Refine active flight schedules</span>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-4">
                         <form action="{% url 'search-result-with-params' from_airport to_airport departure_date %}" method="get" id="filter-form">
                             <div class="row">
                                 <!-- Price Range Filter -->
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label fw-bold">Price Range</label>
+                                    <label class="form-label">Price Range</label>
                                     <div class="row g-2">
                                         <div class="col">
                                             <div class="input-group">
@@ -106,7 +145,7 @@
                                 
                                 <!-- Time Filter -->
                                 <div class="col-md-3 mb-3">
-                                    <label class="form-label fw-bold">Departure Time</label>
+                                    <label class="form-label">Departure Time</label>
                                     <select class="form-select" name="time_filter">
                                         <option value="" {% if not time_filter %}selected{% endif %}>Any Time</option>
                                         <option value="morning" {% if time_filter == 'morning' %}selected{% endif %}>Morning (6 AM - 12 PM)</option>
@@ -118,7 +157,7 @@
                                 
                                 <!-- Price Sort -->
                                 <div class="col-md-3 mb-3">
-                                    <label class="form-label fw-bold">Sort by Price</label>
+                                    <label class="form-label">Sort by Price</label>
                                     <select class="form-select" name="price_sort">
                                         <option value="" {% if not price_sort %}selected{% endif %}>Default (By Time)</option>
                                         <option value="asc" {% if price_sort == 'asc' %}selected{% endif %}>Lowest First</option>
@@ -127,9 +166,9 @@
                                 </div>
                             </div>
                             
-                            <div class="text-center">
-                                <button type="submit" class="btn btn-primary px-4">Apply Filters</button>
-                                <a href="{% url 'search-result-with-params' from_airport to_airport departure_date %}" class="btn btn-outline-secondary ms-2">Reset</a>
+                            <div class="text-center mt-2">
+                                <button type="submit" class="btn btn-primary px-4 rounded-0"><i class="fas fa-filter me-1"></i> Apply Filters</button>
+                                <a href="{% url 'search-result-with-params' from_airport to_airport departure_date %}" class="btn btn-outline-secondary ms-2 rounded-0"><i class="fas fa-undo me-1"></i> Reset</a>
                             </div>
                         </form>
                     </div>
@@ -138,22 +177,35 @@
         </div>
         
         <div class="row justify-content-center">
-            <div class="col-lg-8 col-md-12 col-sm-12 col-xs-12">
-                {% if flights %}
-                <div class="alert alert-info">
-                    Found {{ flights|length }} flight(s) matching your criteria.
+            <div class="col-lg-10 col-md-12 col-sm-12 col-xs-12">
+                {% if filter_relaxed %}
+                <div class="alert alert-info py-2 d-flex flex-wrap justify-content-between align-items-center mb-3 rounded-0" role="alert">
+                    <div>
+                        <i class="fas fa-info-circle me-2 text-warning"></i>
+                        <span>No flights matched your specific filter ({{ time_filter|title }}). Showing all <strong>{{ unfiltered_count }}</strong> scheduled flight(s) on this date:</span>
+                    </div>
+                    <a href="{% url 'search-result-with-params' from_airport to_airport departure_date %}" class="btn btn-outline-light btn-sm rounded-0">Clear Filters</a>
+                </div>
+                {% elif flights %}
+                <div class="alert alert-info py-2 mb-3 rounded-0" role="alert">
+                    <i class="fas fa-plane-departure me-2"></i> Found <strong>{{ flights|length }}</strong> flight(s) matching your criteria.
+                </div>
+                {% elif nearby_flights %}
+                <div class="alert alert-warning py-2 mb-3 rounded-0" role="alert">
+                    <i class="fas fa-calendar-alt me-2"></i> No direct flights scheduled exactly on {{ departure_date }}. Showing <strong>{{ nearby_flights|length }}</strong> flight(s) on upcoming dates for this route:
                 </div>
                 {% else %}
-                <div class="alert alert-warning">
-                    No flights found matching your criteria. Try adjusting your filters.
+                <div class="alert alert-warning py-2 mb-3 rounded-0" role="alert">
+                    <i class="fas fa-info-circle me-2"></i> No flights found matching your criteria. Try adjusting your filters or search a different date.
                 </div>
                 {% endif %}
-                <div class="card rounded-0">
-                    <div class="card-body">
-                        <div class="container-fluid">
+                <div class="card rounded-0 filter-card">
+                    <div class="card-body p-4">
+                        <div class="container-fluid p-0">
                             <div class="list-group">
-                                {% for flight in flights %}
-                                <div class="list-group-item flight-card position-relative mb-3">
+                                {% with display_flights=flights|default:nearby_flights %}
+                                {% for flight in display_flights %}
+                                <div class="list-group-item flight-card position-relative mb-3 rounded-0 p-3">
                                     <!-- Time of day indicator -->
                                     {% with hour=flight.departure|date:"H"|add:"0" %}
                                     {% if hour >= 6 and hour < 12 %}
@@ -174,60 +226,60 @@
                                     
                                     <div class="d-flex w-100 align-items-center">
                                         <div class="col-auto text-center px-3">
-                                            <img src="{% if flight.airline.image_path %}{{ flight.airline.image_path.url}}{% else %}{% static 'assets/default/img/no-image-available.png' %}{% endif %}" alt="{{ flight.airline.name}}" class="img-thumbnail rounded-circle al-logo">
+                                            <img src="{% if flight.airline.image_path %}{{ flight.airline.image_path.url}}{% else %}{% static 'assets/default/img/no-image-available.png' %}{% endif %}" alt="{{ flight.airline.name}}" class="img-thumbnail rounded-circle al-logo" style="background:#0b0f17; border-color:#263345;">
                                         </div>
                                         <div class="col-auto flex-shrink-1 flex-grow-1">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <h4 class="m-0"><b>Flight - {{flight.code}}</b></h4>
-                                                <span class="badge bg-info">{{ flight.airline.name }}</span>
+                                            <div class="d-flex justify-content-between align-items-center pe-5">
+                                                <h4 class="m-0 h5 fw-bold text-light">Flight {{flight.code}}</h4>
+                                                <span class="badge bg-secondary border text-light">{{ flight.airline.name }}</span>
                                             </div>
-                                            <hr>
+                                            <hr style="border-color: #263345;">
                                             <div class="row">
                                                 <!-- Flight Details -->
                                                 <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
                                                     <!-- From/To with Time -->
                                                     <div class="d-flex align-items-center mb-2">
                                                         <div class="text-center me-3">
-                                                            <div class="fw-bold">{{ flight.departure|date:"H:i" }}</div>
-                                                            <small>{{ flight.from_airport.name }}</small>
+                                                            <div class="fw-bold text-light">{{ flight.departure|date:"H:i" }}</div>
+                                                            <small class="text-muted">{{ flight.from_airport.name }}</small>
                                                         </div>
                                                         <div class="flex-grow-1 text-center">
-                                                            <i class="fas fa-plane" style="font-size: 1.2rem;"></i>
-                                                            <div class="text-muted">
+                                                            <i class="fas fa-plane text-warning" style="font-size: 1.1rem;"></i>
+                                                            <div class="text-muted small">
                                                                 {% with dur=flight.estimated_arrival|timeuntil:flight.departure %}
                                                                 {{ dur }}
                                                                 {% endwith %}
                                                             </div>
                                                         </div>
                                                         <div class="text-center ms-3">
-                                                            <div class="fw-bold">{{ flight.estimated_arrival|date:"H:i" }}</div>
-                                                            <small>{{ flight.to_airport.name }}</small>
+                                                            <div class="fw-bold text-light">{{ flight.estimated_arrival|date:"H:i" }}</div>
+                                                            <small class="text-muted">{{ flight.to_airport.name }}</small>
                                                         </div>
                                                     </div>
                                                     
                                                     <dl class="d-flex m-0">
-                                                        <dt class="m-0 fw-bold col-auto px-1">Date:</dt>
-                                                        <dd class="m-0 col-auto flex-shrink-1 flex-grow-1">{{flight.departure|date:"F d, Y"}}</dd>
+                                                        <dt class="m-0 fw-bold col-auto px-1 text-muted small">Date:</dt>
+                                                        <dd class="m-0 col-auto flex-shrink-1 flex-grow-1 text-light small">{{flight.departure|date:"F d, Y"}}</dd>
                                                     </dl>
                                                     <dl class="d-flex m-0">
-                                                        <dt class="m-0 fw-bold col-auto px-1">Aircraft:</dt>
-                                                        <dd class="m-0 col-auto flex-shrink-1 flex-grow-1">{{flight.air_craft_code}}</dd>
+                                                        <dt class="m-0 fw-bold col-auto px-1 text-muted small">Aircraft:</dt>
+                                                        <dd class="m-0 col-auto flex-shrink-1 flex-grow-1 text-light small">{{flight.aircraft.model}}</dd>
                                                     </dl>
                                                 </div>
                                                 
                                                 <!-- Pricing and Availability -->
                                                 <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
-                                                    <div class="card bg-light mb-2">
-                                                        <div class="card-body py-2">
+                                                    <div class="card mb-2 rounded-0" style="background: #0b0f17; border: 1px solid #263345;">
+                                                        <div class="card-body py-2 px-3">
                                                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                                                <span><i class="fas fa-briefcase text-primary"></i> Business</span>
-                                                                <span class="fw-bold">{{flight.business_class_price|inr}}</span>
-                                                                <span class="badge bg-secondary">{{flight.b_slot}} left</span>
+                                                                <span class="small text-muted"><i class="fas fa-briefcase text-primary me-1"></i> Business</span>
+                                                                <span class="fw-bold text-warning">{{flight.business_class_price|inr}}</span>
+                                                                <span class="badge bg-dark border text-light">{{flight.b_slot}} left</span>
                                                             </div>
                                                             <div class="d-flex justify-content-between align-items-center">
-                                                                <span><i class="fas fa-couch text-success"></i> Economy</span>
-                                                                <span class="fw-bold">{{flight.economy_price|inr}}</span>
-                                                                <span class="badge bg-secondary">{{flight.e_slot}} left</span>
+                                                                <span class="small text-muted"><i class="fas fa-couch text-success me-1"></i> Economy</span>
+                                                                <span class="fw-bold text-success">{{flight.economy_price|inr}}</span>
+                                                                <span class="badge bg-dark border text-light">{{flight.e_slot}} left</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -235,7 +287,7 @@
                                             </div>
                                             
                                             <div class="my-2 d-flex flex-wrap justify-content-center gap-2">
-                                                <button type="button" class="btn btn-outline-info btn-sm px-3 view-price-chart-btn"
+                                                <button type="button" class="btn btn-outline-info btn-sm px-3 rounded-0 view-price-chart-btn"
                                                         data-code="{{ flight.code }}"
                                                         data-airline="{{ flight.airline.name }}"
                                                         data-from="{{ flight.from_airport.name }} ({{ flight.from_airport.code }})"
@@ -246,7 +298,7 @@
                                                         data-seat-url="{% url 'seat-selection' flight.id %}">
                                                     <i class="fas fa-chart-pie me-1"></i> View Price Chart
                                                 </button>
-                                                <a href="{% url 'seat-selection' flight.id %}" class="btn btn-primary btn-sm px-4">
+                                                <a href="{% url 'seat-selection' flight.id %}" class="btn btn-primary btn-sm px-4 rounded-0">
                                                     <i class="fas fa-ticket-alt me-1"></i> Select Seat & Reserve
                                                 </a>
                                             </div>
@@ -255,11 +307,15 @@
                                 </div>
                                 {% empty %}
                                 <div class="text-center py-5">
-                                    <i class="fas fa-plane-slash fa-5x text-muted mb-3"></i>
-                                    <h4 class="text-muted">No flights match your search criteria</h4>
-                                    <p>Try adjusting your filters or search for a different date.</p>
+                                    <i class="fas fa-plane-slash fa-4x text-muted mb-3"></i>
+                                    <h4 class="text-light">No flights match your search criteria</h4>
+                                    <p class="text-muted">Try adjusting your filters or search for a different date.</p>
+                                    <a href="{% url 'search-flight' %}" class="btn btn-outline-warning btn-sm mt-2 rounded-0">
+                                        <i class="fas fa-search me-1"></i> Search Another Route
+                                    </a>
                                 </div>
                                 {% endfor %}
+                                {% endwith %}
                             </div>
                         </div>
                     </div>

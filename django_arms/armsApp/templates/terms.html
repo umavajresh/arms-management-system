@@ -35,7 +35,8 @@
             <div class="legal-shell">
                 <header class="mb-4 pb-3 border-bottom border-secondary border-opacity-25">
                     <h1 class="h3 fw-bold mb-2">Terms of Service</h1>
-                    <p class="small text-muted mb-0">Effective Date: October 2026. Version 2.0</p>
+                    <p class="small text-muted mb-0">Draft for operator and legal review. Version 2.0</p>
+                    <p class="small text-warning mb-0">Confirm the operator identity, applicable terms, support contact, and production behavior before publishing.</p>
                 </header>
 
                 <section class="legal-section">
@@ -48,10 +49,10 @@
                 <section class="legal-section">
                     <h2 class="h5 fw-semibold mb-2">2. Flight Inventory and Reservation Nature</h2>
                     <p>
-                        All schedules, flight details, and seat inventories displayed on ARMS represent scheduled flights within the carrier network. Submitting a reservation request generates an internal ARMS reservation reference.
+                        Flight schedules, fares, and seat counts shown here are records stored in ARMS and are not independently verified or live airline-distribution offers. Submitting a request creates an internal ARMS reservation record and reference.
                     </p>
                     <p>
-                        A reservation remains in Pending status until confirmed and approved by flight operations. Once approved, the booking constitutes a confirmed airline carriage reservation. Final boarding passes and baggage check receipts are issued upon identity verification at the airport counter or via web check-in.
+                        An ARMS status change or approval applies only to the record in this application. Unless ARMS is connected to and confirms a reservation with an airline or authorized booking provider, it does not constitute an airline ticket, confirmed carriage, or boarding pass. Verify travel arrangements directly with the relevant carrier.
                     </p>
                 </section>
 
@@ -74,9 +75,9 @@
                         Passengers may cancel reservations through self-service portals (My Bookings or Guest Booking Lookup) subject to the following rules:
                     </p>
                     <ul>
-                        <li>Cancellations are permitted only for flights that have not yet departed.</li>
-                        <li>Once a flight departure time has passed according to official telemetry, self-service cancellation is disabled.</li>
-                        <li>Cancelled reservations release allocated seats back to the aircraft inventory.</li>
+                        <li>ARMS self-service cancellation is subject to the status and departure time recorded in the application.</li>
+                        <li>ARMS cancellation changes the application reservation record; it does not cancel an external airline booking unless that integration is explicitly configured and confirms the cancellation.</li>
+                        <li>Seat availability shown after cancellation reflects the ARMS inventory.</li>
                     </ul>
                 </section>
 
@@ -86,7 +87,7 @@
                         The ARMS AI Travel Assistant provides natural language travel discovery, itinerary suggestions, and policy guidance:
                     </p>
                     <ul>
-                        <li>Flight numbers, departure times, and seat pricing labeled as Verified Inventory reflect active system records.</li>
+                        <li>Flight numbers, departure times, fares, and seat counts reflect ARMS records, not independent airline confirmation or live distribution data.</li>
                         <li>Budget guidance, hotel spending estimates, and destination activity plans are simulated planning estimates and do not constitute fixed binding offers.</li>
                         <li>Passengers must verify visa, entry requirements, and health documentation with respective embassy authorities before departure.</li>
                     </ul>
