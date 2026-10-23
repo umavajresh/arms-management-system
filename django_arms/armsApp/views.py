@@ -1388,6 +1388,33 @@ def travel_chat_api(request):
     message = request.POST.get('message', '').strip()
     language = (request.POST.get('language') or 'en').strip().lower()
 
+    # Handle AI Engine Settings Actions
+    action = request.POST.get('action')
+    if action == 'save_ai_settings':
+        api_key = request.POST.get('api_key', '').strip()
+        provider = request.POST.get('provider', '').strip()
+        model = request.POST.get('model', '').strip()
+        clear_key = request.POST.get('clear_key') == '1'
+        if clear_key:
+            request.session.pop('ai_api_key', None)
+        elif api_key:
+            request.session['ai_api_key'] = api_key
+        request.session['ai_provider'] = provider
+        request.session['ai_model'] = model
+        return JsonResponse({'status': 'success', 'message': 'AI configuration saved.'})
+
+    if action == 'get_ai_status':
+        env_key = os.getenv('OPENROUTER_API_KEY') or os.getenv('GROQ_API_KEY') or os.getenv('HUGGINGFACE_API_KEY') or os.getenv('OPENAI_API_KEY') or os.getenv('AI_API_KEY')
+        has_session_key = bool(request.session.get('ai_api_key'))
+        has_key = has_session_key or bool(env_key)
+        return JsonResponse({
+            'status': 'success',
+            'has_key': has_key,
+            'source': 'session' if has_session_key else ('environment' if env_key else 'neural_engine'),
+            'provider': request.session.get('ai_provider', 'auto'),
+            'model': request.session.get('ai_model', 'default'),
+        })
+
     # Tool execution pathway for direct UI tool calls
     tool_name = request.POST.get('tool_name')
     if tool_name:
@@ -1437,15 +1464,23 @@ def travel_chat_api(request):
     # 6. Generate a plan grounded in matching flight inventory
     # ---------------------------------------------------------
     user_preferences = getattr(request.user, 'travel_preference', None) if request.user.is_authenticated else None
+    api_key_override = request.POST.get('api_key') or request.session.get('ai_api_key')
+    ai_provider = request.POST.get('provider') or request.session.get('ai_provider')
+    ai_model = request.POST.get('model') or request.session.get('ai_model')
+
     try:
         response = get_travel_response(
             message,
             flights,
             language=language,
             user_preferences=user_preferences,
-            session_context=request.session.get('ai_chat_history', [])
+            session_context=request.session.get('ai_chat_history', []),
+            api_key=api_key_override,
+            ai_provider=ai_provider,
+            ai_model=ai_model,
         )
     except Exception as e:
+        logger.exception("Chatbot response error")
         response = (
             "I could not generate the full travel plan right now. "
             "Please try again, or search the flight inventory directly."
