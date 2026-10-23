@@ -234,8 +234,19 @@
                                                 </div>
                                             </div>
                                             
-                                            <div class="my-2 text-center">
-                                                <a href="{% url 'seat-selection' flight.id %}" class="btn btn-primary w-50">
+                                            <div class="my-2 d-flex flex-wrap justify-content-center gap-2">
+                                                <button type="button" class="btn btn-outline-info btn-sm px-3 view-price-chart-btn"
+                                                        data-code="{{ flight.code }}"
+                                                        data-airline="{{ flight.airline.name }}"
+                                                        data-from="{{ flight.from_airport.name }} ({{ flight.from_airport.code }})"
+                                                        data-to="{{ flight.to_airport.name }} ({{ flight.to_airport.code }})"
+                                                        data-departure="{{ flight.departure|date:'F d, Y H:i' }}"
+                                                        data-economy="{{ flight.economy_price }}"
+                                                        data-business="{{ flight.business_class_price }}"
+                                                        data-seat-url="{% url 'seat-selection' flight.id %}">
+                                                    <i class="fas fa-chart-pie me-1"></i> View Price Chart
+                                                </button>
+                                                <a href="{% url 'seat-selection' flight.id %}" class="btn btn-primary btn-sm px-4">
                                                     <i class="fas fa-ticket-alt me-1"></i> Select Seat & Reserve
                                                 </a>
                                             </div>
@@ -257,6 +268,145 @@
         </div>
     </div>
 </section>
+
+<!-- Flight Price Chart Modal -->
+<div class="modal fade" id="searchPriceChartModal" tabindex="-1" aria-labelledby="searchPriceChartModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-0" style="background: var(--arms-surface, #131924); border: 1px solid var(--arms-border, #263345); color: #e2e8f0;">
+            <div class="modal-header py-3" style="background: var(--arms-card, #182230); border-bottom: 1px solid #263345;">
+                <div>
+                    <h5 class="modal-title h6 mb-0" id="searchPriceChartModalLabel">
+                        <i class="fas fa-chart-pie me-2 text-warning"></i>
+                        <span id="modal-flight-code">Flight Price Chart</span>
+                    </h5>
+                    <small class="text-muted" id="modal-flight-route"></small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Cabin Class Tabs -->
+                <ul class="nav nav-pills mb-3 gap-2" id="price-chart-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active rounded-0 btn-sm" id="tab-economy-btn" data-bs-toggle="pill" data-bs-target="#tab-economy" type="button" role="tab" style="border: 1px solid #263345;">
+                            <i class="fas fa-couch me-1"></i> Economy Class Fare
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-0 btn-sm" id="tab-business-btn" data-bs-toggle="pill" data-bs-target="#tab-business" type="button" role="tab" style="border: 1px solid #263345;">
+                            <i class="fas fa-briefcase me-1"></i> Business Class Fare
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="price-chart-tabContent">
+                    <!-- Economy Breakdown -->
+                    <div class="tab-pane fade show active" id="tab-economy" role="tabpanel">
+                        <div class="p-3 mb-3" style="background: #0b0f17; border: 1px solid #263345;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold text-light">Economy Fare Distribution</span>
+                                <span class="h6 mb-0 text-success fw-bold" id="eco-total-fare">₹0.00</span>
+                            </div>
+                            <div class="progress mb-2 rounded-1" style="height: 12px; background: #131924; border: 1px solid #263345;">
+                                <div class="progress-bar" style="width: 68%; background-color: #315b6b;" title="Base Fare: 68%"></div>
+                                <div class="progress-bar" style="width: 14%; background-color: #c5a880;" title="Fuel Surcharge: 14%"></div>
+                                <div class="progress-bar" style="width: 10%; background-color: #38a169;" title="Airport & Security: 10%"></div>
+                                <div class="progress-bar" style="width: 8%; background-color: #718096;" title="GST & Taxes: 8%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted" style="font-size: 0.72rem;">
+                                <span><span class="d-inline-block rounded-circle me-1" style="width:7px; height:7px; background:#315b6b;"></span>Base (68%)</span>
+                                <span><span class="d-inline-block rounded-circle me-1" style="width:7px; height:7px; background:#c5a880;"></span>Fuel (14%)</span>
+                                <span><span class="d-inline-block rounded-circle me-1" style="width:7px; height:7px; background:#38a169;"></span>Fees (10%)</span>
+                                <span><span class="d-inline-block rounded-circle me-1" style="width:7px; height:7px; background:#718096;"></span>GST (8%)</span>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-dark table-sm mb-0" style="border-color: #263345;">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted py-2">Base Airfare (68%)</td>
+                                        <td class="text-end fw-bold text-light py-2" id="eco-base-fare">₹0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted py-2">Fuel & Airline Surcharge (YQ 14%)</td>
+                                        <td class="text-end fw-bold text-light py-2" id="eco-fuel-fare">₹0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted py-2">Airport Development & Security Fees (PSF/ASF 10%)</td>
+                                        <td class="text-end fw-bold text-light py-2" id="eco-airport-fare">₹0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted py-2">GST & Civil Aviation Taxes (8%)</td>
+                                        <td class="text-end fw-bold text-light py-2" id="eco-gst-fare">₹0.00</td>
+                                    </tr>
+                                    <tr class="table-active">
+                                        <td class="fw-bold text-light py-2">Total Published Economy Price</td>
+                                        <td class="text-end fw-bold text-success py-2" id="eco-total-table">₹0.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Business Breakdown -->
+                    <div class="tab-pane fade" id="tab-business" role="tabpanel">
+                        <div class="p-3 mb-3" style="background: #0b0f17; border: 1px solid #263345;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold text-light">Business Class Fare Distribution</span>
+                                <span class="h6 mb-0 text-warning fw-bold" id="biz-total-fare">₹0.00</span>
+                            </div>
+                            <div class="progress mb-2 rounded-1" style="height: 12px; background: #131924; border: 1px solid #263345;">
+                                <div class="progress-bar" style="width: 68%; background-color: #315b6b;" title="Base Fare: 68%"></div>
+                                <div class="progress-bar" style="width: 14%; background-color: #c5a880;" title="Fuel Surcharge: 14%"></div>
+                                <div class="progress-bar" style="width: 10%; background-color: #38a169;" title="Airport & Security: 10%"></div>
+                                <div class="progress-bar" style="width: 8%; background-color: #718096;" title="GST & Taxes: 8%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted" style="font-size: 0.72rem;">
+                                <span><span class="d-inline-block rounded-circle me-1" style="width:7px; height:7px; background:#315b6b;"></span>Base (68%)</span>
+                                <span><span class="d-inline-block rounded-circle me-1" style="width:7px; height:7px; background:#c5a880;"></span>Fuel (14%)</span>
+                                <span><span class="d-inline-block rounded-circle me-1" style="width:7px; height:7px; background:#38a169;"></span>Fees (10%)</span>
+                                <span><span class="d-inline-block rounded-circle me-1" style="width:7px; height:7px; background:#718096;"></span>GST (8%)</span>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-dark table-sm mb-0" style="border-color: #263345;">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted py-2">Base Airfare (68%)</td>
+                                        <td class="text-end fw-bold text-light py-2" id="biz-base-fare">₹0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted py-2">Fuel & Airline Surcharge (YQ 14%)</td>
+                                        <td class="text-end fw-bold text-light py-2" id="biz-fuel-fare">₹0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted py-2">Airport Development & Security Fees (PSF/ASF 10%)</td>
+                                        <td class="text-end fw-bold text-light py-2" id="biz-airport-fare">₹0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted py-2">GST & Civil Aviation Taxes (8%)</td>
+                                        <td class="text-end fw-bold text-light py-2" id="biz-gst-fare">₹0.00</td>
+                                    </tr>
+                                    <tr class="table-active">
+                                        <td class="fw-bold text-light py-2">Total Published Business Price</td>
+                                        <td class="text-end fw-bold text-warning py-2" id="biz-total-table">₹0.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between" style="background: var(--arms-card, #182230); border-top: 1px solid #263345;">
+                <button type="button" class="btn btn-outline-secondary btn-sm rounded-0" data-bs-dismiss="modal">Close</button>
+                <a href="#" id="modal-proceed-booking-btn" class="btn btn-primary btn-sm rounded-0 px-4">
+                    <i class="fas fa-ticket-alt me-1"></i> Proceed to Seat Selection & Booking
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock pageContent %} {% block ScriptBlock %}
 <script>
     $(function() {
@@ -316,6 +466,52 @@
             if (minPrice > maxPrice && maxPrice > 0) {
                 $('#min-price').val(maxPrice);
             }
+        });
+
+        // Price Chart Modal Handler
+        $('.view-price-chart-btn').on('click', function() {
+            const code = $(this).data('code');
+            const airline = $(this).data('airline');
+            const from = $(this).data('from');
+            const to = $(this).data('to');
+            const seatUrl = $(this).data('seat-url');
+            const ecoPrice = parseFloat($(this).data('economy')) || 0;
+            const bizPrice = parseFloat($(this).data('business')) || 0;
+
+            const formatInr = (n) => '₹' + n.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            $('#modal-flight-code').text(code + ' · ' + airline);
+            $('#modal-flight-route').text(from + ' to ' + to);
+            $('#modal-proceed-booking-btn').attr('href', seatUrl);
+
+            // Economy breakdown
+            const ecoBase = Math.round(ecoPrice * 0.68 * 100) / 100;
+            const ecoFuel = Math.round(ecoPrice * 0.14 * 100) / 100;
+            const ecoAirport = Math.round(ecoPrice * 0.10 * 100) / 100;
+            const ecoGst = Math.round((ecoPrice - ecoBase - ecoFuel - ecoAirport) * 100) / 100;
+
+            $('#eco-total-fare').text(formatInr(ecoPrice));
+            $('#eco-total-table').text(formatInr(ecoPrice));
+            $('#eco-base-fare').text(formatInr(ecoBase));
+            $('#eco-fuel-fare').text(formatInr(ecoFuel));
+            $('#eco-airport-fare').text(formatInr(ecoAirport));
+            $('#eco-gst-fare').text(formatInr(ecoGst));
+
+            // Business breakdown
+            const bizBase = Math.round(bizPrice * 0.68 * 100) / 100;
+            const bizFuel = Math.round(bizPrice * 0.14 * 100) / 100;
+            const bizAirport = Math.round(bizPrice * 0.10 * 100) / 100;
+            const bizGst = Math.round((bizPrice - bizBase - bizFuel - bizAirport) * 100) / 100;
+
+            $('#biz-total-fare').text(formatInr(bizPrice));
+            $('#biz-total-table').text(formatInr(bizPrice));
+            $('#biz-base-fare').text(formatInr(bizBase));
+            $('#biz-fuel-fare').text(formatInr(bizFuel));
+            $('#biz-airport-fare').text(formatInr(bizAirport));
+            $('#biz-gst-fare').text(formatInr(bizGst));
+
+            const modal = new bootstrap.Modal(document.getElementById('searchPriceChartModal'));
+            modal.show();
         });
     });
 </script>

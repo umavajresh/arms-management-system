@@ -1060,6 +1060,11 @@
             if (selectedSeats.length === 0) {
                 $('#selected-seats-list').html('<p class="text-muted">No seats selected</p>');
                 $('#total-price').text('₹0.00');
+                $('#breakdown-base-fare').text('₹0.00');
+                $('#breakdown-fuel').text('₹0.00');
+                $('#breakdown-airport').text('₹0.00');
+                $('#breakdown-gst').text('₹0.00');
+                $('#breakdown-total').text('₹0.00');
                 return;
             }
             
@@ -1090,7 +1095,20 @@
             });
             
             $('#selected-seats-list').html(summaryHtml);
-            $('#total-price').text('₹' + totalPrice.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            const formatInr = (n) => '₹' + n.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            $('#total-price').text(formatInr(totalPrice));
+            
+            // Dynamic price breakdown update
+            const baseFare = Math.round(totalPrice * 0.68 * 100) / 100;
+            const fuelSurcharge = Math.round(totalPrice * 0.14 * 100) / 100;
+            const airportFees = Math.round(totalPrice * 0.10 * 100) / 100;
+            const taxesGst = Math.round((totalPrice - baseFare - fuelSurcharge - airportFees) * 100) / 100;
+            
+            $('#breakdown-base-fare').text(formatInr(baseFare));
+            $('#breakdown-fuel').text(formatInr(fuelSurcharge));
+            $('#breakdown-airport').text(formatInr(airportFees));
+            $('#breakdown-gst').text(formatInr(taxesGst));
+            $('#breakdown-total').text(formatInr(totalPrice));
         }
         
         function updateContinueButton() {
