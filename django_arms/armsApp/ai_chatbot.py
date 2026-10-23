@@ -684,7 +684,10 @@ def _build_llm_grounding_context(flights=None):
                 f"available seats: {f.get('economy_available', 'available')}. Link: [Book Seats](/seat_selection/{f.get('id')})"
             )
     else:
-        upcoming = Flights.objects.filter(delete_flag=0, departure__gte=timezone.now()).select_related('airline', 'from_airport', 'to_airport')[:8]
+        try:
+            upcoming = Flights.objects.filter(delete_flag=0, departure__gte=timezone.now()).select_related('airline', 'from_airport', 'to_airport')[:8]
+        except Exception:
+            upcoming = []
         for f in upcoming:
             flight_items.append(
                 f"- Flight {f.code}: {f.airline.name}, {f.from_airport.code} ({f.from_airport.city}) to {f.to_airport.code} ({f.to_airport.city}), "
@@ -928,7 +931,12 @@ def get_travel_response(message, flights=None, language='en', user_preferences=N
             lines.extend(["", f"Season note for {prefs['month']}: {season_note}"])
 
     lines.extend(["", "Bookable flights currently in the ARMS inventory:"])
-    matched_flights = flights or search_real_flights(prefs, limit=5)
+    matched_flights = flights
+    if matched_flights is None:
+        try:
+            matched_flights = search_real_flights(prefs, limit=5)
+        except Exception:
+            matched_flights = []
     if matched_flights:
         for flight in matched_flights[:5]:
             flight_id = flight.get('id')
