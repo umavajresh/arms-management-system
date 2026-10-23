@@ -781,6 +781,34 @@ class TravelChatbotTests(SimpleTestCase):
         self.assertIn("Domestic Flights", response)
         self.assertIn("International Flights", response)
 
+    def test_extract_travel_preferences_for_kadapa_under_12000(self):
+        prefs = extract_travel_preferences("plan a trip to Kadapa under₹12000")
+        self.assertEqual(prefs['destination'], 'Kadapa')
+        self.assertEqual(prefs['budget'], 12000)
+        self.assertEqual(prefs['trip_type'], 'domestic')
+
+    def test_kadapa_trip_response_matches_user_destination_and_budget(self):
+        response = get_travel_response("plan a trip to Kadapa under₹12000")
+        self.assertIn("Kadapa", response)
+        self.assertIn("within budget", response)
+        self.assertIn("Gandikota", response)
+        self.assertIn("Belum Caves", response)
+        self.assertNotIn("Singapore", response)
+        self.assertNotIn("Istanbul", response)
+
+    def test_compute_price_breakdown_percentages(self):
+        from armsApp.ai_chatbot import compute_price_breakdown
+        breakdown = compute_price_breakdown(10000.0)
+        self.assertEqual(breakdown['base_fare'], 6800.0)
+        self.assertEqual(breakdown['fuel_surcharge'], 1400.0)
+        self.assertEqual(breakdown['airport_fee'], 1000.0)
+        self.assertEqual(breakdown['gst'], 800.0)
+        self.assertEqual(breakdown['total'], 10000.0)
+
+    def test_price_chart_inquiry(self):
+        response = get_travel_response("show fare breakdown price chart")
+        self.assertTrue("Price Breakdown" in response or "Fare Breakdown" in response or "Base Airfare" in response)
+
 
 class TravelFlightSearchTests(TestCase):
     def test_international_search_matches_origin_and_excludes_domestic_routes(self):
