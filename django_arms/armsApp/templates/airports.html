@@ -5,11 +5,11 @@
         <center>
             <hr class="bg-primary opacity-100" style="height:3px" width="5%">
         </center>
-        <div class="card rounded-0 shadow">
+        <div class="card rounded-0">
             <div class="card-body">
                 <div class="container-fluid">
                     <div class="text-end mb-3">
-                        <button class="btn btn-sm btn-primary rounded-0 bg-gradient-primary" type="button" id="create_new"><i class="fa fa-plus"></i> Add New</button>
+                        <button class="btn btn-sm btn-primary rounded-0" type="button" id="create_new"><i class="fa fa-plus"></i> Add New</button>
                     </div>
                     <table class="table table-bordered table-striped" id="airport-tbl">
                         <colgroup>
@@ -36,8 +36,8 @@
                                 <td>{{ airport.name}}</td>
                                 <td class="text-center">
                                     {% if airport.status == '1' %}
-                                    <span class="badge badge-success bg-gradient bg-success px-3 rounded-pill bg-opacity-75 text-sm py-1">Active</span> {% else %}
-                                    <span class="badge badge-secondary bg-gradient bg-secondary px-3 rounded-pill bg-opacity-75 text-sm py-1">Inactive</span> {% endif %}
+                                    <span class="badge badge-success bg-success px-3 bg-opacity-75 text-sm py-1">Active</span> {% else %}
+                                    <span class="badge badge-secondary bg-secondary px-3 bg-opacity-75 text-sm py-1">Inactive</span> {% endif %}
                                 </td>
                                 <td class="text-center">
                                     <div class="dropdown">

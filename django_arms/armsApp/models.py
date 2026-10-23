@@ -202,6 +202,36 @@ class UserProfile(models.Model):
     date_added = models.DateTimeField(default=timezone.now)
     date_updated = models.DateTimeField(auto_now=True)
 
+    # Two-factor authentication (2FA / OTP)
+    two_factor_enabled = models.BooleanField(default=False)
+    otp_code = models.CharField(max_length=6, blank=True, null=True)
+    otp_expiry = models.DateTimeField(blank=True, null=True)
+
+    def generate_otp(self):
+        import secrets
+        code = f"{secrets.randbelow(900000) + 100000}"
+        self.otp_code = code
+        self.otp_expiry = timezone.now() + timezone.timedelta(minutes=10)
+        self.save(update_fields=['otp_code', 'otp_expiry'])
+        return code
+
+    def verify_otp(self, code):
+        if not self.otp_code or not self.otp_expiry:
+            return False
+        if timezone.now() > self.otp_expiry:
+            self.clear_otp()
+            return False
+        from django.utils.crypto import constant_time_compare
+        is_valid = constant_time_compare(str(self.otp_code).strip(), str(code).strip())
+        if is_valid:
+            self.clear_otp()
+        return is_valid
+
+    def clear_otp(self):
+        self.otp_code = None
+        self.otp_expiry = None
+        self.save(update_fields=['otp_code', 'otp_expiry'])
+
     class Meta:
         db_table = 'armsApp_userprofile'
 
@@ -238,12 +268,11 @@ class Reservation(models.Model):
         Check if this reservation can be cancelled.
         Returns False if:
         1. Flight has already departed
-        2. Reservation is already cancelled
+        2. Reservation is not pending or approved
         """
         from django.utils import timezone
         
-        # Check if already cancelled
-        if self.status == '2':
+        if self.status not in {'0', '1'}:
             return False
             
         # Check if flight has departed
@@ -263,6 +292,8 @@ class Reservation(models.Model):
             return "Already cancelled"
         elif self.status == '3':
             return "Rejected by admin"
+        elif self.status not in {'0', '1'}:
+            return "This reservation cannot be cancelled"
             
         current_time = timezone.now()
         if self.flight.departure <= current_time:

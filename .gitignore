@@ -111,6 +111,7 @@ Thumbs.db
 # Environment variables / secrets
 .env
 .env.*
+password.txt
 
 # Node modules (if any front-end tooling used)
 node_modules/

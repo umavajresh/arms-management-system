@@ -66,8 +66,7 @@ class SaveUser(UserCreationForm):
         answer = self.cleaned_data.get('security_answer')
         if not answer:
             raise forms.ValidationError("Security answer is required")
-        # Store the answer in lowercase to make later verification case-insensitive
-        return answer.lower()
+        return answer.strip().casefold()
 
 class UpdateProfile(UserChangeForm):
     username = forms.CharField(max_length=250,help_text="The Username field is required.")
@@ -274,7 +273,7 @@ class SaveReservation(forms.ModelForm):
     last_name = forms.CharField(max_length=250)
     gender = forms.CharField(max_length=250)
     contact = forms.CharField(max_length=250)
-    email = forms.CharField(max_length=250)
+    email = forms.EmailField(max_length=250)
     address = forms.CharField(widget=forms.Textarea(), required=False)
     seat_number = forms.CharField(max_length=10, required=False)
 
@@ -288,7 +287,7 @@ class SaveReservation(forms.ModelForm):
         try:
             flight = models.Flights.objects.get(id = fid)
             return flight
-        except:
+        except models.Flights.DoesNotExist:
             raise forms.ValidationError(f"Invalid Flight")
 
 

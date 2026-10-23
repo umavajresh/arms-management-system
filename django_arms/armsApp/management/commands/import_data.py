@@ -5,7 +5,13 @@ from django.conf import settings
 from armsApp.models import Airlines, Airport, Aircraft, Flights
 from django.utils import timezone
 from datetime import datetime
-from django.utils import timezone as dj_timezone
+
+
+def _next_year(value):
+    try:
+        return value.replace(year=value.year + 1)
+    except ValueError:
+        return value.replace(year=value.year + 1, month=2, day=28)
 
 class Command(BaseCommand):
     help = 'Import data from CSV files into the database'
@@ -157,9 +163,14 @@ class Command(BaseCommand):
                         departure = datetime.fromisoformat(row['departure'])
                         arrival = datetime.fromisoformat(row['estimated_arrival'])
                         if departure.tzinfo is None:
-                            departure = dj_timezone.make_aware(departure)
+                            departure = timezone.make_aware(departure)
                         if arrival.tzinfo is None:
-                            arrival = dj_timezone.make_aware(arrival)
+                            arrival = timezone.make_aware(arrival)
+
+                        now = timezone.now()
+                        while departure <= now:
+                            departure = _next_year(departure)
+                            arrival = _next_year(arrival)
                         
                         # Create or update flight
                         flight, created = Flights.objects.update_or_create(

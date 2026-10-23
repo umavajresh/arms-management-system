@@ -16,7 +16,7 @@ git push origin main
    - Start Command: `gunicorn django_arms.wsgi:application --bind 0.0.0.0:$PORT`
 
 4. Set environment variables in Render (Dashboard -> Environment):
-   - `SECRET_KEY` — generate a secure random string
+   - `SECRET_KEY`: generate a secure random string
    - `DEBUG` = `False`
    - `ALLOWED_HOSTS` = yourdomain.com (or `*` to test)
    - `AVIATIONSTACK_API_KEY` = your live flight API key
@@ -29,4 +29,4 @@ python django_arms/manage.py migrate
 python django_arms/manage.py createsuperuser
 ```
 
-That's it — Render manages TLS and scaling.
+That's it: Render manages TLS and scaling.

@@ -1,199 +1,236 @@
 import datetime
-from django.shortcuts import redirect, render
-import json
-from django.contrib import messages
-from django.contrib.auth.models import User
-from django.http import HttpResponse
-from django.utils import timezone
-from armsApp import models, forms
-from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 import logging
+
+from django.contrib import messages
+from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.http import JsonResponse
+from django.shortcuts import redirect, render
+from django.utils import timezone
+from django.utils.crypto import constant_time_compare
+
+from armsApp.models import UserProfile
 
 logger = logging.getLogger(__name__)
 
-# Add the new password reset views
+RESET_FLOW_LIFETIME_SECONDS = 600
+MAX_RESET_ATTEMPTS = 5
+RESET_SESSION_KEYS = (
+    'reset_user_id',
+    'identity_verified',
+    'reset_expires_at',
+    'reset_attempts',
+)
+
+
+def _clear_reset_flow(request):
+    for key in RESET_SESSION_KEYS:
+        request.session.pop(key, None)
+
+
+def _begin_reset_flow(request, user_id):
+    _clear_reset_flow(request)
+    request.session['reset_user_id'] = user_id or 0
+    request.session['reset_expires_at'] = (
+        timezone.now() + datetime.timedelta(seconds=RESET_FLOW_LIFETIME_SECONDS)
+    ).timestamp()
+    request.session['reset_attempts'] = 0
+
+
+def _reset_flow_is_valid(request):
+    expires_at = request.session.get('reset_expires_at')
+    if not expires_at or timezone.now().timestamp() >= expires_at:
+        _clear_reset_flow(request)
+        return False
+    return True
+
+
+def _record_reset_failure(request):
+    attempts = request.session.get('reset_attempts', 0) + 1
+    request.session['reset_attempts'] = attempts
+    if attempts >= MAX_RESET_ATTEMPTS:
+        _clear_reset_flow(request)
+        return False
+    return True
+
+
 def forgot_password(request):
     context = {
         'page_title': 'Forgot Password',
         'topbar': False,
-        'footer': False
+        'footer': False,
     }
-    
+
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
-        
-        if not username:
-            messages.error(request, "Please provide your username or ID")
-            return render(request, 'forgot_password.html', context)
-        
-        # Try to find user by username or custom_id
-        user = None
-        try:
-            # First check if it's a username
-            user = User.objects.get(username=username)
-        except User.DoesNotExist:
-            # Then check if it's a custom_id
+        user = User.objects.filter(username=username).first()
+        if user is None:
+            profile = UserProfile.objects.filter(custom_id=username).select_related('user').first()
+            user = profile.user if profile else None
+
+        profile = None
+        if user is not None:
             try:
-                from armsApp.models import UserProfile
-                profile = UserProfile.objects.get(custom_id=username)
-                user = profile.user
+                profile = user.profile
             except UserProfile.DoesNotExist:
-                logger.debug("UserProfile not found for custom_id: %s", username)
-        
-        if not user:
-            messages.error(request, "No account found with that username or ID")
-            return render(request, 'forgot_password.html', context)
-        
-        # Check if user has security question set
-        try:
-            profile = user.profile
-            if not profile.security_question or not profile.security_answer:
-                messages.error(request, "Security questions not set for this account. Please contact administrator.")
-                return render(request, 'forgot_password.html', context)
-                
-            # Store user_id in session for next step
-            request.session['reset_user_id'] = user.id
-            
-            # Redirect to security question verification
-            return redirect('verify-identity')
-            
-        except Exception as e:
-            messages.error(request, f"Error: {str(e)}")
-    
+                pass
+
+        if not profile or not all((
+            profile.security_question,
+            profile.security_answer,
+            profile.date_of_birth,
+        )):
+            user = None
+
+        _begin_reset_flow(request, user.pk if user else None)
+        messages.info(
+            request,
+            "If the account can be verified, you can continue with password recovery.",
+        )
+        return redirect('verify-identity')
+
     return render(request, 'forgot_password.html', context)
+
 
 def verify_identity(request):
     context = {
         'page_title': 'Verify Identity',
         'topbar': False,
-        'footer': False
+        'footer': False,
     }
-    
-    # Check if we have a user_id in session
+
     user_id = request.session.get('reset_user_id')
-    if not user_id:
+    if user_id is None or not _reset_flow_is_valid(request):
         messages.error(request, "Session expired. Please restart the password reset process.")
         return redirect('forgot-password')
-    
-    try:
-        # Get the user and profile
-        user = User.objects.get(id=user_id)
-        profile = user.profile
-        
-        # Add user and security question to context
-        context['user'] = user
-        
-        # Get the full text of the security question
-        from armsApp.models import UserProfile
-        security_questions = dict(UserProfile.SECURITY_QUESTION_CHOICES)
-        context['security_question_text'] = security_questions.get(profile.security_question, profile.security_question)
-        
-        # Handle form submission
-        if request.method == 'POST':
-            dob = request.POST.get('date_of_birth')
-            answer = request.POST.get('security_answer', '').lower()  # Convert to lowercase
-            
-            # Check date of birth
-            if dob:
-                try:
-                    dob_date = datetime.datetime.strptime(dob, '%Y-%m-%d').date()
-                    if dob_date != profile.date_of_birth:
-                        messages.error(request, "Date of birth does not match our records.")
-                        return render(request, 'verify_identity.html', context)
-                except:
-                    messages.error(request, "Invalid date format.")
-                    return render(request, 'verify_identity.html', context)
-            else:
-                messages.error(request, "Please enter your date of birth.")
-                return render(request, 'verify_identity.html', context)
-            
-            # Check security answer
-            if not answer:
-                messages.error(request, "Please provide an answer to the security question.")
-                return render(request, 'verify_identity.html', context)
-            
-            if answer.strip().lower() != profile.security_answer.strip().lower():
-                messages.error(request, "Security answer does not match our records.")
-                return render(request, 'verify_identity.html', context)
-            
-            # If everything matches, mark verification as successful
-            request.session['identity_verified'] = True
-            
-            # Redirect to reset password page
-            return redirect('reset-password')
-            
-    except User.DoesNotExist:
-        messages.error(request, "User not found. Please restart the password reset process.")
+    if request.session.get('reset_attempts', 0) >= MAX_RESET_ATTEMPTS:
+        _clear_reset_flow(request)
+        messages.error(request, "Too many attempts. Please restart password recovery.")
         return redirect('forgot-password')
-    except Exception as e:
-        messages.error(request, f"Error: {str(e)}")
-        return redirect('forgot-password')
-    
+
+    profile = None
+    if user_id:
+        try:
+            user = User.objects.get(id=user_id)
+            profile = user.profile
+        except (User.DoesNotExist, UserProfile.DoesNotExist):
+            _clear_reset_flow(request)
+            messages.error(request, "Session expired. Please restart the password reset process.")
+            return redirect('forgot-password')
+        except Exception:
+            logger.exception("Unable to load password recovery profile")
+            _clear_reset_flow(request)
+            messages.error(request, "Password recovery is temporarily unavailable. Please restart the process.")
+            return redirect('forgot-password')
+
+    context['security_question_text'] = "Your recovery question is hidden for privacy."
+
+    if request.method == 'POST':
+        dob = request.POST.get('date_of_birth', '')
+        answer = request.POST.get('security_answer', '').strip().casefold()
+        try:
+            dob_date = datetime.datetime.strptime(dob, '%Y-%m-%d').date()
+        except ValueError:
+            dob_date = None
+
+        answer_matches = False
+        if profile is not None and answer:
+            try:
+                answer_matches = check_password(answer, profile.security_answer)
+            except ValueError:
+                answer_matches = False
+            if not answer_matches:
+                answer_matches = constant_time_compare(
+                    answer,
+                    profile.security_answer.casefold(),
+                )
+
+        if (
+            profile is None
+            or dob_date != profile.date_of_birth
+            or not answer_matches
+        ):
+            if not _record_reset_failure(request):
+                messages.error(request, "Too many attempts. Please restart password recovery.")
+                return redirect('forgot-password')
+            messages.error(request, "The details did not match. Please try again.")
+            return render(request, 'verify_identity.html', context)
+
+        try:
+            answer_is_hashed = check_password(answer, profile.security_answer)
+        except ValueError:
+            answer_is_hashed = False
+        if not answer_is_hashed:
+            profile.security_answer = make_password(answer)
+            profile.save(update_fields=['security_answer'])
+
+        request.session.cycle_key()
+        request.session['identity_verified'] = True
+        request.session['reset_attempts'] = 0
+        return redirect('reset-password')
+
     return render(request, 'verify_identity.html', context)
+
 
 def reset_password(request):
     context = {
         'page_title': 'Reset Password',
         'topbar': False,
-        'footer': False
+        'footer': False,
     }
-    
-    # Check if user is verified
-    if not request.session.get('identity_verified'):
+
+    if (
+        not request.session.get('identity_verified')
+        or not request.session.get('reset_user_id')
+        or not _reset_flow_is_valid(request)
+    ):
+        _clear_reset_flow(request)
         messages.error(request, "Please verify your identity first.")
         return redirect('forgot-password')
-    
-    # Get user from session
-    user_id = request.session.get('reset_user_id')
-    if not user_id:
+
+    try:
+        user = User.objects.get(id=request.session['reset_user_id'])
+    except User.DoesNotExist:
+        _clear_reset_flow(request)
         messages.error(request, "Session expired. Please restart the password reset process.")
         return redirect('forgot-password')
-    
-    try:
-        user = User.objects.get(id=user_id)
-        context['user'] = user
-        
-        if request.method == 'POST':
-            resp = {'status': 'failed', 'msg': ''}
-            
-            new_password = request.POST.get('new_password')
-            confirm_password = request.POST.get('confirm_password')
-            
-            if not new_password or not confirm_password:
-                resp['msg'] = "Please fill in all fields."
-            elif new_password != confirm_password:
-                resp['msg'] = "Passwords do not match."
-            elif len(new_password) < 6:
-                resp['msg'] = "Password must be at least 6 characters long."
-            else:
-                # Set the new password
-                user.set_password(new_password)
-                user.save()
-                
-                # Clear session data
-                request.session.pop('reset_user_id', None)
-                request.session.pop('identity_verified', None)
-                
-                resp['status'] = 'success'
-                resp['msg'] = "Password has been reset successfully. You can now login with your new password."
-                
-                # If it's not an AJAX request, redirect to login
-                if not request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                    messages.success(request, resp['msg'])
-                    return redirect('login-page')
-            
-            # Return JSON for AJAX requests
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return HttpResponse(json.dumps(resp), content_type='application/json')
-            else:
-                messages.error(request, resp['msg'])
-                
-    except User.DoesNotExist:
-        messages.error(request, "User not found. Please restart the password reset process.")
+    except Exception:
+        logger.exception("Unable to load user for password reset")
+        _clear_reset_flow(request)
+        messages.error(request, "Password reset is temporarily unavailable. Please try again.")
         return redirect('forgot-password')
-    except Exception as e:
-        messages.error(request, f"Error: {str(e)}")
+
+    context['user'] = user
+    if request.method == 'POST':
+        new_password = request.POST.get('new_password') or ''
+        confirm_password = request.POST.get('confirm_password') or ''
+        response = {'status': 'failed', 'msg': ''}
+
+        if not new_password or not confirm_password:
+            response['msg'] = "Please fill in all fields."
+        elif new_password != confirm_password:
+            response['msg'] = "Passwords do not match."
+        else:
+            try:
+                validate_password(new_password, user=user)
+            except ValidationError as exc:
+                response['msg'] = " ".join(exc.messages)
+            else:
+                user.set_password(new_password)
+                user.save(update_fields=['password'])
+                _clear_reset_flow(request)
+                response.update(
+                    status='success',
+                    msg="Password has been reset successfully. You can now login with your new password.",
+                )
+
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return HttpResponse(json.dumps({'status': 'failed', 'msg': str(e)}), content_type='application/json')
-    
+            return JsonResponse(response)
+        if response['status'] == 'success':
+            messages.success(request, response['msg'])
+            return redirect('login-page')
+        messages.error(request, response['msg'])
+
     return render(request, 'reset_password.html', context)

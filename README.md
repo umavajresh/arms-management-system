@@ -1,118 +1,214 @@
+# Django ARMS
 
-# Django ARMS (Airline Reservation Management System)
-https://youtu.be/EJkb_slY4gU?si=LH_LaqsJEbSqSGjS 
+Airline Reservation Management System (ARMS) is a Django web application for maintaining airline operations and letting passengers search flights, select seats, and submit reservation requests. It includes separate passenger and administrator workflows, recurring flight schedules, booking notifications, a flight tracker, and a travel-assistant interface.
 
+Project demonstration: [YouTube video](https://youtu.be/EJkb_slY4gU?si=LH_LaqsJEbSqSGjS)
 
-**FIND THE PROJECT DEMO VIDEO IN THE ABOVE YOUTUBE LINK**
-This repository contains a Django-based Airline Reservation Management System (ARMS).
+## Contents
 
-# ✈️ Django ARMS - Airline Reservation Management System
+- [Features](#features)
+- [How the system works](#how-the-system-works)
+- [Technology](#technology)
+- [Repository layout](#repository-layout)
+- [Run locally](#run-locally)
+- [Test and sample data](#test-and-sample-data)
+- [Configuration](#configuration)
+- [Deployment](#deployment)
+- [Security and operational notes](#security-and-operational-notes)
 
-<div align="center">
+## Features
 
-![Django](https://img.shields.io/badge/Django-4.0.3-092E20?style=for-the-badge&logo=django&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
-![Bootstrap](https://img.shields.io/badge/Bootstrap-5.0-7952B3?style=for-the-badge&logo=bootstrap&logoColor=white)
+### Passenger features
 
-*A comprehensive airline reservation management system built with Django*
+- Register with a username, a separate User ID, contact details, date of birth, and a password-recovery question.
+- Sign in with either the username or User ID. Sessions last 24 hours; signing in on another device does not invalidate an existing device session.
+- Search future flights by origin, destination, and travel date; inspect fare, route, airline, and seat availability.
+- Select available business- or economy-class seats and submit passenger/contact details.
+- Verify a reservation with the account password and CAPTCHA.
+- View reservation status, receive in-app notifications, and cancel eligible reservations before departure.
+- View a dashboard, profile, upcoming flights, and flight tracking.
 
-[🚀 Live Demo](#) • [📖 Documentation](#features) • [🐛 Report Bug](https://github.com/praann07/django_arms/issues) • [💡 Request Feature](https://github.com/praann07/django_arms/issues)
+### Administrator features
 
-</div>
+- Maintain airlines, airports, aircraft, flights, and recurring flight schedules.
+- Review reservations and approve or reject pending requests.
+- Inspect upcoming flights, reservation counts, and seat occupancy.
+- Import airline, airport, aircraft, and flight records from CSV files.
 
----
+### Additional features
 
-## 🌟 Overview
+- Reservation status notifications and QR-code support in reservation views.
+- Flight status lookup with AviationStack when configured, with OpenSky Network used as a fallback source.
+- Travel assistant that searches the app's own future-flight data and can call OpenAI when configured; local recommendations are used if the API key is absent or the API call fails.
+- CAPTCHA verification on reservation submission and standard Django CSRF protection on form posts.
 
-Django ARMS is a full-featured **Airline Reservation Management System** designed to streamline flight bookings, manage airline operations, and provide an intuitive user experience for both passengers and administrators. Built with Django 4.0.3 and modern web technologies, it offers a robust solution for airline management needs.
+## How the system works
 
-## ✨ Key Features
+### Main data concepts
 
-### 🎫 **Passenger Experience**
-- **Smart Flight Search** - Find flights by route, date, and preferences
-- **Interactive Seat Selection** - Visual seat maps with real-time availability
-- **Secure Reservations** - Multi-step booking process with confirmation
-- **User Dashboard** - Manage bookings, view flight history, and notifications
-- **Mobile-Responsive Design** - Seamless experience across all devices
+The application uses Django models and relational database constraints to connect operational records:
 
-### 🏢 **Admin Management**
-- **Flight Scheduling** - Create recurring flight schedules with flexible patterns
-- **Real-time Monitoring** - Track upcoming flights and occupancy rates
-- **Reservation Management** - Approve, reject, and manage passenger bookings
-- **Aircraft Management** - Maintain fleet information with capacity details
-- **Airline & Airport Management** - Comprehensive airline and airport database
+| Entity | Purpose and relationships |
+| --- | --- |
+| `Airlines` | Airline code, name, country, active state, and optional logo. |
+| `Airport` | Airport code, name, city, country, and active state. |
+| `Aircraft` | Aircraft model/manufacturer and business/economy seat capacities. |
+| `Flights` | A dated service joining an airline, origin airport, destination airport, and aircraft; stores departure/arrival, fare, currency, and capacity. |
+| `FlightSchedule` | A reusable route/aircraft/time definition with a date range and recurrence rule; it can generate dated `Flights`. |
+| `User` and `UserProfile` | Django authentication identity plus the ARMS User ID, role, contact information, and recovery details. Each profile belongs to one user. |
+| `Reservation` | Passenger and contact information linked to a flight, optional signed-in user, cabin class, seat number, and workflow status. |
+| `UserNotification` | In-app messages associated with a user, such as reservation decisions. |
 
-### 🔐 **Security & Authentication**
-- **Custom User Profiles** - Extended user management with security questions
-- **Password Recovery** - Secure password reset using security questions + DOB
-- **Admin Middleware** - Role-based access control and user separation
-- **Data Validation** - Comprehensive form validation and error handling
+```mermaid
+erDiagram
+    AIRLINES ||--o{ FLIGHTS : operates
+    AIRPORT ||--o{ FLIGHTS : origin
+    AIRPORT ||--o{ FLIGHTS : destination
+    AIRCRAFT ||--o{ FLIGHTS : assigned
+    AIRLINES ||--o{ FLIGHT_SCHEDULE : schedules
+    AIRPORT ||--o{ FLIGHT_SCHEDULE : route
+    AIRCRAFT ||--o{ FLIGHT_SCHEDULE : assigned
+    FLIGHTS ||--o{ RESERVATION : receives
+    USER ||--o| USER_PROFILE : has
+    USER ||--o{ RESERVATION : makes
+    USER ||--o{ USER_NOTIFICATION : receives
+```
 
-### 📊 **Advanced Features**
-- **QR Code Integration** - Generate QR codes for reservations
-- **CAPTCHA Security** - Bot protection for sensitive operations
-- **Notification System** - Real-time notifications for booking updates
-- **Data Import/Export** - CSV data management for bulk operations
-- **Custom Template Tags** - Enhanced templating with currency formatting
+### Reservation lifecycle
 
-## 🛠️ Technology Stack
+The passenger chooses a future flight and available seat, provides passenger details, and passes password/CAPTCHA verification. The resulting record is a reservation request, not a ticket issued by an airline or a payment transaction. Administrators process pending requests:
 
-| Category | Technology |
-|----------|------------|
-| **Backend** | Django 4.0.3, Python 3.8+ |
-| **Database** | SQLite (Development), PostgreSQL-ready |
-| **Frontend** | Bootstrap 5, jQuery, HTML5/CSS3 |
-| **UI Components** | DataTables, Select2, Font Awesome |
-| **Security** | Django Auth, CAPTCHA, Cryptography |
-| **Additional** | Pillow (Image Processing), QR Code Generation |
+| Stored status | Meaning |
+| --- | --- |
+| `0` | Pending administrator approval |
+| `1` | Approved/confirmed in this application |
+| `2` | Cancelled |
+| `3` | Rejected by an administrator |
 
-## 🏗️ Project Structure
-django_arms/
-├── armsApp/                    # Main application
-│   ├── models/                 # Database models
-│   ├── views/                  # View controllers
-│   ├── templates/              # HTML templates
-│   ├── static/                 # CSS, JS, Images
-│   ├── management/commands/    # Custom Django commands
-│   └── migrations/             # Database migrations
-├── django_arms/                # Project settings
-├── media/                      # User uploads
-├── static/                     # Static files
-└── requirements.txt            # Dependencies
+Seat availability is derived from aircraft capacity and reservation records; cancelled records do not consume a seat. A reservation cannot be cancelled after its flight has departed.
 
+### Request structure
 
-## 🚀 Quick Start
+The Django project package (`django_arms/`) owns settings, middleware, and the root URL configuration. The `armsApp` application owns database models, views, forms, templates, admin screens, migrations, and custom management commands. URL patterns dispatch browser requests to views; views validate inputs, read/write models through the Django ORM, and render templates or return JSON for AJAX actions.
 
-### Prerequisites
-- Python 3.8 or higher
-- pip (Python package manager)
-- Git
-- Django
-- SQL lyt
-- Frontend(HTML,CS,JS)
-- 
+## Technology
 
-### Installation
+- Python 3.12 or newer and Django 6.x (the dependency file pins Django 6.0.7).
+- SQLite for local development; PostgreSQL through `DATABASE_URL` for a persistent deployment database.
+- Django templates, Bootstrap assets, jQuery, DataTables, and Select2 for the web interface.
+- WhiteNoise for static files in the deployed Django service.
+- `django-simple-captcha`, `django-qr-code`, Pillow, and OpenAI Python SDK for their respective features.
+- AviationStack and OpenSky Network for optional flight status/position lookups; Leaflet and OpenStreetMap tiles render available map positions.
 
-1. **Clone the repository**
+## Repository layout
+
+```text
+.
+|-- README.md
+|-- DEPLOY_TO_RENDER.md
+|-- Procfile
+|-- render.yaml
+|-- vercel.json
+|-- docker/
+|   `-- Dockerfile
+`-- django_arms/
+    |-- manage.py
+    |-- requirements.txt
+    |-- settings_prod.py              # Legacy/standalone settings file
+    |-- django_arms/
+    |   |-- settings.py               # Local settings (SQLite)
+    |   |-- settings_prod.py          # Importable production settings
+    |   |-- urls.py
+    |   `-- wsgi.py
+    |-- armsApp/
+    |   |-- models.py
+    |   |-- forms.py
+    |   |-- views.py
+    |   |-- migrations/
+    |   |-- management/commands/
+    |   `-- templates/
+    |-- static/
+    `-- staticfiles/                  # Collected during deployment
+```
+
+## Run locally
+
+Prerequisites: Python 3.12+ and pip. Run these commands from the repository root. They explicitly use local SQLite settings and do not require a hosted database.
+
 ```bash
-git clone https://github.com/praann07/django_arms.git
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r django_arms/requirements.txt
 cd django_arms
+env -u DATABASE_URL python manage.py migrate
+env -u DATABASE_URL python manage.py runserver 127.0.0.1:8000
+```
 
-2.**Create virtual environment**
-python -m venv venv
-# Windows
-.\venv\Scripts\activate
-# macOS/Linux
-source venv/bin/activate
-3.**Install Dependencies**
-pip install -r requirements.txt
+Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) and use **Create an account** or visit `/register`. Sign in at `/login`. Keep the terminal running while using the site; stop the development server with `Ctrl+C`.
 
-4.**Database Setup**
-python manage.py migrate
-python manage.py collectstatic
+For Windows PowerShell, create/activate the environment with `py -m venv .venv` and `.venv\Scripts\Activate.ps1`. From the repository root, install dependencies with `py -m pip install -r django_arms\requirements.txt`; then change to `django_arms` and run `py manage.py migrate` and `py manage.py runserver 127.0.0.1:8000`. If `DATABASE_URL` is defined in that shell, remove it for local SQLite with `$env:DATABASE_URL = $null`.
 
-5.**Run Development Server**
-python manage.py runserver
-**Visit http://127.0.0.1:8000 to see the application in action! 🎉**
+## Test and sample data
+
+From the `django_arms/` directory:
+
+```bash
+python manage.py check
+python manage.py test
+```
+
+Import the bundled airline, airport, aircraft, and flight CSV data into the currently configured database with:
+
+```bash
+python manage.py import_data
+```
+
+Create a Django administrator account with `python manage.py createsuperuser`, then open `/admin/`. The administrator account is separate from regular passenger registration.
+
+## Configuration
+
+The importable production settings module is `django_arms.settings_prod`. `manage.py` selects it when `DATABASE_URL` is set; otherwise, it uses local SQLite settings. The WSGI application uses the production module. Configure these environment variables in the hosting provider rather than committing credentials:
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `SECRET_KEY` | Production | Long, random Django secret. |
+| `DEBUG` | Production | Set to `False` in production. |
+| `DATABASE_URL` | Production | Persistent PostgreSQL connection URL. Required when production `DEBUG=False`. |
+| `ALLOWED_HOSTS` | Recommended | Comma-separated hostnames accepted by Django. |
+| `SECURE_HSTS_SECONDS` | Optional | HSTS duration in seconds. Defaults to `0`; set only after confirming HTTPS works end to end. |
+| `SECURE_HSTS_INCLUDE_SUBDOMAINS` | Optional | Set to `True` only if every subdomain is HTTPS-only. |
+| `SECURE_HSTS_PRELOAD` | Optional | Set to `True` only when the domain meets browser preload requirements. |
+| `OPENAI_API_KEY` | Optional | Enables the OpenAI-backed travel assistant; local recommendations remain available without it. |
+| `AVIATIONSTACK_API_KEY` | Optional | Enables the AviationStack flight lookup before OpenSky fallback. |
+
+Local accounts and data are stored in the SQLite database under the Django project directory. A hosted database is separate; users and flights do not move between local and hosted databases automatically.
+
+## Deployment
+
+The repository contains Render, Vercel, and Docker configuration, but a persistent relational database is necessary for accounts and sessions.
+
+### Render
+
+`render.yaml` sets the service root to `django_arms/`, installs `requirements.txt`, collects static files, and starts Gunicorn. Set `SECRET_KEY`, `DATABASE_URL`, `DEBUG=False`, and an appropriate `ALLOWED_HOSTS` value in Render. Attach a persistent PostgreSQL database, deploy, then run `python manage.py migrate` in the service shell. Use `python manage.py createsuperuser` to create an administrator. See [DEPLOY_TO_RENDER.md](DEPLOY_TO_RENDER.md) for deployment notes.
+
+### Vercel
+
+`vercel.json` routes requests to the Django WSGI app. Configure the production environment variables there as well, particularly `SECRET_KEY` and `DATABASE_URL`, and run migrations against the same persistent PostgreSQL database. Do not rely on a local SQLite file for Vercel production data: serverless filesystems are not a durable shared database.
+
+### Docker
+
+`docker/Dockerfile` provides a container build definition. Supply production environment variables and a persistent database when running the image; the container filesystem should not be treated as durable account storage.
+
+## Security and operational notes
+
+- Never commit passwords, API keys, database URLs, or production secret keys. Keep local credential files outside version control.
+- Django password hashes are one-way; forgotten passwords must be reset, not retrieved.
+- Password recovery checks the registered date of birth and recovery answer; it does not send email reset links. Recovery attempts are limited within a ten-minute session flow.
+- Use a unique production `SECRET_KEY`, HTTPS, a restricted `ALLOWED_HOSTS` list, and a managed database with backups. Review Django's deployment checklist before exposing the service publicly.
+- `settings_prod` enables HTTPS redirects and secure session/CSRF cookies when `DEBUG=False`. HSTS is opt-in; enable subdomain coverage or browser preload only after verifying that the entire domain is permanently HTTPS-only.
+- Reservation verification throttling is session-scoped, not a distributed or account-level rate limit. Add shared, user-aware throttling at the application or edge before exposing authentication and booking endpoints to substantial public traffic.
+- Local SQLite is for development. Use PostgreSQL in production so the reservation transaction's row locking can serialize competing bookings for the same flight.
+- The repository includes deployment configurations for multiple hosts. Select one deployment target and verify its build root, environment variables, database, migrations, and static files as a single deployment setup.
+- Flight tracking and AI suggestions depend on third-party availability when their optional services are used. External flight data may be incomplete, rate-limited, or delayed.
+- Reservation approval in ARMS is an application workflow. The repository does not integrate airline ticketing systems or a payment processor.

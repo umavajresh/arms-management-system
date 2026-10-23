@@ -11,8 +11,8 @@
         </center>
         
         <!-- Filter Form -->
-        <div class="card rounded-0 shadow mb-4">
-            <div class="card-header bg-gradient-primary text-light">
+        <div class="card rounded-0 mb-4">
+            <div class="card-header text-light">
                 <h5 class="card-title">Filter Options</h5>
             </div>
             <div class="card-body">
@@ -90,7 +90,7 @@
                     </div>
                     
                     <div class="col-md-4 d-flex align-items-end gap-2">
-                        <button type="submit" class="btn btn-primary rounded-0 bg-gradient-primary">Apply Filters</button>
+                        <button type="submit" class="btn btn-primary rounded-0">Apply Filters</button>
                         <a href="/admin/upcoming-flights/" class="btn btn-light rounded-0 border">Reset</a>
                     </div>
                 </form>
@@ -123,7 +123,7 @@
                 <!-- Statistics Cards -->
                 <div class="row mt-3">
                     <div class="col-md-4">
-                        <div class="card rounded-0 shadow">
+                        <div class="card rounded-0">
                             <div class="card-body">
                                 <h5 class="card-title">Total Flights</h5>
                                 <h1 class="display-4 fw-bold text-center">{{ flights|length }}</h1>
@@ -131,7 +131,7 @@
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="card rounded-0 shadow">
+                        <div class="card rounded-0">
                             <div class="card-body">
                                 <h5 class="card-title">Active Flights</h5>
                                 <h1 class="display-4 fw-bold text-center">
@@ -146,7 +146,7 @@
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="card rounded-0 shadow">
+                        <div class="card rounded-0">
                             <div class="card-body">
                                 <h5 class="card-title">Cancelled Flights</h5>
                                 <h1 class="display-4 fw-bold text-center">
@@ -163,7 +163,7 @@
                 </div>
                 
                 <!-- Flights Table -->
-                <div class="card rounded-0 shadow mt-3">
+                <div class="card rounded-0 mt-3">
                     <div class="card-body">
                         {% if flights %}
                         <table class="table table-bordered table-striped" id="flights-table">
@@ -196,13 +196,13 @@
                                     <td>{{ flight.arrival|date:"M d, Y H:i" }}</td>
                                     <td class="text-center">
                                         {% if flight.status == '1' %}
-                                        <span class="badge bg-success rounded-pill">Active</span>
+                                        <span class="badge bg-success">Active</span>
                                         {% elif flight.status == '2' %}
-                                        <span class="badge bg-danger rounded-pill">Cancelled</span>
+                                        <span class="badge bg-danger">Cancelled</span>
                                         {% elif flight.status == '3' %}
-                                        <span class="badge bg-info rounded-pill">Completed</span>
+                                        <span class="badge bg-info">Completed</span>
                                         {% else %}
-                                        <span class="badge bg-secondary rounded-pill">Unknown</span>
+                                        <span class="badge bg-secondary">Unknown</span>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -236,7 +236,7 @@
                                     </td>
                                     <td class="text-center">{{ flight.reservation_count }}</td>
                                     <td class="text-center">
-                                        <a href="/admin/armsApp/flights/{{ flight.id }}/change/" class="btn btn-sm btn-primary rounded-0 bg-gradient-primary">
+                                        <a href="/admin/armsApp/flights/{{ flight.id }}/change/" class="btn btn-sm btn-primary rounded-0">
                                             <i class="fa fa-edit"></i> Edit
                                         </a>
                                     </td>
@@ -255,8 +255,8 @@
             
             <!-- Schedules Tab Content -->
             <div class="tab-pane fade" id="schedules-content" role="tabpanel" aria-labelledby="schedules-tab">
-                <div class="card rounded-0 shadow mt-3">
-                    <div class="card-header bg-gradient-primary text-light">
+                <div class="card rounded-0 mt-3">
+                    <div class="card-header text-light">
                         <h5 class="card-title">Recurring Flight Schedules</h5>
                     </div>
                     <div class="card-body">
@@ -286,26 +286,26 @@
                                     <td>{{ schedule.from_airport.code }}</td>
                                     <td>{{ schedule.to_airport.code }}</td>
                                     <td class="text-center">
-                                        {% if schedule.monday %}<span class="badge bg-info rounded-pill">Mon</span>{% endif %}
-                                        {% if schedule.tuesday %}<span class="badge bg-info rounded-pill">Tue</span>{% endif %}
-                                        {% if schedule.wednesday %}<span class="badge bg-info rounded-pill">Wed</span>{% endif %}
-                                        {% if schedule.thursday %}<span class="badge bg-info rounded-pill">Thu</span>{% endif %}
-                                        {% if schedule.friday %}<span class="badge bg-info rounded-pill">Fri</span>{% endif %}
-                                        {% if schedule.saturday %}<span class="badge bg-info rounded-pill">Sat</span>{% endif %}
-                                        {% if schedule.sunday %}<span class="badge bg-info rounded-pill">Sun</span>{% endif %}
+                                        {% if schedule.monday %}<span class="badge bg-info">Mon</span>{% endif %}
+                                        {% if schedule.tuesday %}<span class="badge bg-info">Tue</span>{% endif %}
+                                        {% if schedule.wednesday %}<span class="badge bg-info">Wed</span>{% endif %}
+                                        {% if schedule.thursday %}<span class="badge bg-info">Thu</span>{% endif %}
+                                        {% if schedule.friday %}<span class="badge bg-info">Fri</span>{% endif %}
+                                        {% if schedule.saturday %}<span class="badge bg-info">Sat</span>{% endif %}
+                                        {% if schedule.sunday %}<span class="badge bg-info">Sun</span>{% endif %}
                                     </td>
                                     <td>{{ schedule.departure_time }}</td>
                                     <td class="text-center">
                                         {% if schedule.is_active %}
-                                        <span class="badge bg-success rounded-pill">Active</span>
+                                        <span class="badge bg-success">Active</span>
                                         {% else %}
-                                        <span class="badge bg-danger rounded-pill">Inactive</span>
+                                        <span class="badge bg-danger">Inactive</span>
                                         {% endif %}
                                     </td>
                                     <td>{{ schedule.start_date|date:"M d, Y" }}</td>
                                     <td>{{ schedule.end_date|date:"M d, Y" }}</td>
                                     <td class="text-center">
-                                        <a href="/admin/armsApp/flightschedule/{{ schedule.id }}/change/" class="btn btn-sm btn-primary rounded-0 bg-gradient-primary">
+                                        <a href="/admin/armsApp/flightschedule/{{ schedule.id }}/change/" class="btn btn-sm btn-primary rounded-0">
                                             <i class="fa fa-edit"></i> Edit
                                         </a>
                                     </td>

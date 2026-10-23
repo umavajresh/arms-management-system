@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block pageContent %}
+<style>
+    main {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--arms-page, #f1f3f0);
+    }
+    .auth-card {
+        background-color: var(--arms-surface, #f8f9f6);
+        border: 1px solid var(--arms-border, #d4dad6);
+        border-radius: 4px;
+        box-shadow: none;
+    }
+    .auth-card .card-header {
+        background-color: var(--arms-surface, #f8f9f6);
+        border-bottom: 1px solid var(--arms-border, #d4dad6);
+        padding: 1.25rem 1.5rem;
+    }
+    .auth-card .card-body {
+        padding: 1.5rem;
+    }
+    .otp-input {
+        letter-spacing: 0.35rem;
+        font-size: 1.35rem;
+        text-align: center;
+        font-weight: 600;
+        border: 1px solid var(--arms-border, #d4dad6);
+        background-color: #fcfdfa;
+    }
+    .otp-input:focus {
+        border-color: var(--arms-primary, #315b6b);
+        box-shadow: none;
+        outline: 1px solid var(--arms-primary, #315b6b);
+    }
+    .btn-verify {
+        background-color: var(--arms-primary, #315b6b);
+        border: 1px solid var(--arms-primary, #315b6b);
+        color: #ffffff;
+        font-weight: 600;
+        border-radius: 4px;
+    }
+    .btn-verify:hover,
+    .btn-verify:focus {
+        background-color: var(--arms-primary-hover, #274956);
+        border-color: var(--arms-primary-hover, #274956);
+        color: #ffffff;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-5">
+            <div class="card auth-card">
+                <div class="card-header">
+                    <h1 class="h5 mb-1 fw-bold text-dark">Two-Factor Authentication</h1>
+                    <p class="text-muted small mb-0">Enter the 6-digit one-time code sent to your registered account.</p>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="small text-muted mb-1">Authenticating account:</div>
+                        <div class="fw-semibold text-dark">{{ verify_username }}</div>
+                        {% if masked_email %}
+                        <div class="small text-muted">Notification sent to: {{ masked_email }}</div>
+                        {% endif %}
+                    </div>
+
+                    <form method="POST" action="{% url 'verify-2fa' %}" autocomplete="off">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="otp_code" class="form-label fw-semibold">Verification Code</label>
+                            <input
+                                type="text"
+                                class="form-control otp-input"
+                                id="otp_code"
+                                name="otp_code"
+                                maxlength="6"
+                                pattern="[0-9]{6}"
+                                inputmode="numeric"
+                                placeholder="000000"
+                                required
+                                autofocus
+                            >
+                            <div class="form-text small">Enter 6 numeric digits. The code expires in 10 minutes.</div>
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-verify py-2">
+                                Verify and Sign In
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                        <a href="{% url 'resend-2fa-otp' %}" class="small text-decoration-none text-secondary">
+                            Resend verification code
+                        </a>
+                        <a href="{% url 'login-page' %}" class="small text-decoration-none text-secondary">
+                            Cancel and return to login
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock pageContent %}

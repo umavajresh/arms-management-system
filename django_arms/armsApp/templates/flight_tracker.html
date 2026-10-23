@@ -4,25 +4,25 @@
 {% block pageContent %}
 <style>
     .tracker-shell { max-width: 1080px; }
-    .tracker-hero { border: 1px solid rgba(94, 234, 212, .24); background: linear-gradient(135deg, rgba(16, 40, 55, .94), rgba(15, 21, 32, .96)); }
-    .tracker-kicker { color: var(--cyan); font-size: .76rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
-    .tracker-title { color: var(--text); font-weight: 800; }
-    .tracker-subtitle, .route-label, .updated { color: var(--muted); }
-    .tracking-form .form-control { min-height: 48px; color: var(--text); background: rgba(7, 13, 24, .82); border-color: rgba(143, 176, 255, .28); }
-    .tracking-form .form-control::placeholder { color: #7f93b1; }
-    .tracking-form .btn { min-height: 48px; }
-    .result-panel { min-height: 260px; }
-    .status-pill { border-radius: 999px; padding: .45rem .8rem; font-size: .78rem; font-weight: 800; }
-    .status-pill.scheduled, .status-pill.boarding { color: #111827; background: var(--warning); }
-    .status-pill.in-flight { color: #052e2b; background: var(--cyan); }
-    .status-pill.landed { color: #052e16; background: var(--success); }
-    .route-line { position: relative; height: 10px; margin: 2rem 0 1rem; border-radius: 10px; background: rgba(143, 176, 255, .22); }
-    .route-progress { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--cyan), var(--blue)); transition: width .5s ease; }
-    .route-plane { position: absolute; top: 50%; left: 0; color: var(--cyan); transform: translate(-50%, -50%); transition: left .5s ease; }
+    .tracker-hero { border: 1px solid var(--arms-border); background: var(--arms-surface); }
+    .tracker-kicker { color: #315b6b; font-size: .76rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .tracker-title { color: var(--arms-text); font-weight: 700; }
+    .tracker-subtitle, .route-label, .updated { color: var(--arms-muted); }
+    .tracking-form .form-control { min-height: 44px; color: var(--arms-text); background: var(--arms-surface); border-color: var(--arms-border); }
+    .tracking-form .form-control::placeholder { color: var(--arms-muted); }
+    .tracking-form .btn { min-height: 44px; }
+    .result-panel { min-height: 240px; border: 1px solid var(--arms-border); background: var(--arms-surface); }
+    .status-pill { border-radius: 4px; padding: .35rem .75rem; font-size: .8rem; font-weight: 600; border: 1px solid var(--arms-border); }
+    .status-pill.scheduled, .status-pill.boarding { color: #111827; background: #e9ecef; }
+    .status-pill.in-flight { color: #052e2b; background: #d1e7dd; }
+    .status-pill.landed { color: #052e16; background: #d1e7dd; }
+    .route-line { position: relative; height: 6px; margin: 2rem 0 1rem; border-radius: 3px; background: var(--arms-border); }
+    .route-progress { height: 100%; width: 0; border-radius: inherit; background: #315b6b; }
+    .route-plane { position: absolute; top: 50%; left: 0; color: #315b6b; transform: translate(-50%, -50%); }
     .route-endpoints { display: flex; justify-content: space-between; gap: 1rem; }
-    .route-code { color: var(--text); font-size: 1.35rem; font-weight: 800; }
-    .flight-choice { cursor: pointer; border: 1px solid rgba(143, 176, 255, .16); background: rgba(7, 13, 24, .4); transition: border-color .2s ease, background .2s ease; }
-    .flight-choice:hover { border-color: var(--cyan); background: rgba(94, 234, 212, .08); }
+    .route-code { color: var(--arms-text); font-size: 1.35rem; font-weight: 800; }
+    .flight-choice { cursor: pointer; border: 1px solid var(--arms-border); background: var(--arms-surface); border-radius: 6px; }
+    .flight-choice:hover { border-color: #315b6b; }
     .empty-state { color: var(--muted); }
     #live-map { height: 340px; width: 100%; border-radius: 18px; overflow: hidden; border: 1px solid rgba(143, 176, 255, .2); }
 </style>

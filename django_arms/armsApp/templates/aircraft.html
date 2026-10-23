@@ -7,7 +7,7 @@
         <div class="d-flex justify-content-between align-items-center">
             <h4 class="card-title mb-0">Aircraft List</h4>
             <div class="text-start">
-                <button class="btn btn-primary bg-gradient rounded-0" type="button" id="create_new"><i class="fa fa-plus"></i> Add New</button>
+                <button class="btn btn-primary rounded-0" type="button" id="create_new"><i class="fa fa-plus"></i> Add New</button>
             </div>
         </div>
     </div>
@@ -48,8 +48,8 @@
                         <td class="py-1 text-center">{{ aircraft.economy_capacity }}</td>
                         <td class="py-1 text-center">
                             {% if aircraft.status == '1' %}
-                            <span class="badge bg-success rounded-pill px-3">Active</span> {% else %}
-                            <span class="badge bg-danger rounded-pill px-3">Inactive</span> {% endif %}
+                            <span class="badge bg-success px-3">Active</span> {% else %}
+                            <span class="badge bg-danger px-3">Inactive</span> {% endif %}
                         </td>
                         <td class="py-1 text-center">
                             <button class="btn btn-sm btn-info edit-data" type="button" data-id="{{ aircraft.pk }}" title="Edit"><i class="fa fa-edit"></i></button>

@@ -20,7 +20,7 @@
 </style>
 <div class="d-flex flex-column w-100 justify-content-center align-items-center">
     <div class="col-lg-4 col-md-6 col-sm-12 col-xs-12">
-        <div class="card card-default rounded-0 shadow">
+        <div class="card card-default rounded-0">
             <div class="card-header">
                 <h4 class="card-title"><b>Login</b></h4>
             </div>
@@ -101,7 +101,7 @@
                     end_loader();
                 },
                 success: function(resp) {
-                    if (typeof resp == 'object' && resp.status == 'success') {
+                    if (typeof resp == 'object' && (resp.status == 'success' || resp.status == '2fa_required')) {
                         el.removeClass("alert alert-danger err-msg")
                         if (resp.redirect) {
                             location.href = resp.redirect;

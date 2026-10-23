@@ -88,9 +88,9 @@
                     <dt>Status</dt>
                     <dd class="ps-4">
                         {% if reservation.status == '0' %}
-                        <span class="badge badge-secondary bg-gradient bg-secondary text-sm px-3 rounded-pill">Pending</span> {% elif reservation.status == '1' %}
-                        <span class="badge badge-primary bg-gradient bg-primary text-sm px-3 rounded-pill">Confirmed</span> {% else %}
-                        <span class="badge badge-danger bg-gradient bg-danger text-sm px-3 rounded-pill">Cancelled</span> {% endif %}
+                        <span class="badge badge-secondary bg-secondary text-sm px-3">Pending</span> {% elif reservation.status == '1' %}
+                        <span class="badge badge-primary bg-primary text-sm px-3">Confirmed</span> {% else %}
+                        <span class="badge badge-danger bg-danger text-sm px-3">Cancelled</span> {% endif %}
                     </dd>
                 </dl>
             </div>
@@ -100,9 +100,9 @@
 <hr>
 <div class="text-end">
     {% if reservation.status == '0' %}
-    <button class="btn btn-primary border bg-gradient bg-primary rounded-0 update_reservation" data-status="1" type="button">Mark as Confirmed</button> {% endif %}
-    <button class="btn btn-danger border bg-gradient bg-danger rounded-0 update_reservation" data-status="2" type="button">Cancel</button>
-    <button class="btn btn-light border bg-gradient bg-light rounded-0" data-bs-dismiss="modal" type="button">Close</button>
+    <button class="btn btn-primary border bg-primary rounded-0 update_reservation" data-status="1" type="button">Mark as Confirmed</button> {% endif %}
+    <button class="btn btn-danger border bg-danger rounded-0 update_reservation" data-status="2" type="button">Cancel</button>
+    <button class="btn btn-light border bg-light rounded-0" data-bs-dismiss="modal" type="button">Close</button>
 </div>
 <script>
     $(function() {

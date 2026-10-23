@@ -1,41 +1,89 @@
-{% extends 'base.html' %} {% block pageContent%}
-<div class="container">
+{% extends 'base.html' %}
+{% block pageContent %}
+<div class="container py-4">
     <div class="row justify-content-center">
-        <div class="col-lg-7 col-md-10 col-sm-12 col-xs-12">
-            <div class="card shadow rounded-0">
-                <div class="card-header">
-                    <div class="h5 card-title fw-bold">My Profile</div>
+        <div class="col-lg-8 col-md-10 col-12">
+            <!-- Account Details Card -->
+            <div class="card rounded-0 mb-4" style="background-color: var(--arms-surface, #f8f9f6); border: 1px solid var(--arms-border, #d4dad6); box-shadow: none;">
+                <div class="card-header" style="background-color: var(--arms-surface, #f8f9f6); border-bottom: 1px solid var(--arms-border, #d4dad6);">
+                    <div class="h5 card-title fw-bold mb-0 text-dark">My Profile</div>
                 </div>
                 <div class="card-body">
                     <div class="container-fluid">
                         <div class="row">
-                            <div class="col-md-8">
-                                <dl>
-                                    <dt class="text-muted">Fullname</dt>
-                                    <dd class="ps-4">{{ user.first_name }} {{ user.last_name }}</dd>
-                                    <dt class="text-muted">Email</dt>
-                                    <dd class="ps-4">{{ user.email }}</dd>
-                                    <dt class="text-muted">Username</dt>
-                                    <dd class="ps-4">{{ user.username }}</dd>
+                            <div class="col-md-10">
+                                <dl class="row mb-0">
+                                    <dt class="col-sm-4 text-muted">Full Name</dt>
+                                    <dd class="col-sm-8">{{ user.first_name }} {{ user.last_name }}</dd>
+
+                                    <dt class="col-sm-4 text-muted">Email</dt>
+                                    <dd class="col-sm-8">{{ user.email }}</dd>
+
+                                    <dt class="col-sm-4 text-muted">Username</dt>
+                                    <dd class="col-sm-8">{{ user.username }}</dd>
+
                                     {% if user_profile %}
-                                    <dt class="text-muted">User ID</dt>
-                                    <dd class="ps-4">{{ user_profile.custom_id }}</dd>
-                                    <dt class="text-muted">Mobile</dt>
-                                    <dd class="ps-4">{{ user_profile.mobile }}</dd>
+                                    <dt class="col-sm-4 text-muted">User ID</dt>
+                                    <dd class="col-sm-8">{{ user_profile.custom_id }}</dd>
+
+                                    <dt class="col-sm-4 text-muted">Mobile</dt>
+                                    <dd class="col-sm-8">{{ user_profile.mobile|default:"Not specified" }}</dd>
+
+                                    <dt class="col-sm-4 text-muted">Account Role</dt>
+                                    <dd class="col-sm-8">{{ user_profile.get_user_type_display|default:user_profile.user_type|capfirst }}</dd>
                                     {% endif %}
                                 </dl>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <div class="d-flex w-100 text-end justify-content-end">
-                        <a href="{% url 'update-password' %}" class="btn btn btn-light border btn-sm bg-gradient rounded-0 me-2">Update Password</a>
-                        <a href="{% url 'update-profile' %}" class="btn btn btn-primary btn-sm bg-gradient rounded-0">Update Profile</a>
+                <div class="card-footer" style="background-color: var(--arms-surface, #f8f9f6); border-top: 1px solid var(--arms-border, #d4dad6);">
+                    <div class="d-flex w-100 justify-content-end gap-2">
+                        <a href="{% url 'update-password' %}" class="btn btn-light border btn-sm rounded-0">Update Password</a>
+                        <a href="{% url 'update-profile' %}" class="btn btn-primary btn-sm rounded-0" style="background-color: var(--arms-primary, #315b6b); border-color: var(--arms-primary, #315b6b);">Update Profile</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Two-Factor Authentication Security Card -->
+            <div class="card rounded-0" style="background-color: var(--arms-surface, #f8f9f6); border: 1px solid var(--arms-border, #d4dad6); box-shadow: none;">
+                <div class="card-header" style="background-color: var(--arms-surface, #f8f9f6); border-bottom: 1px solid var(--arms-border, #d4dad6);">
+                    <div class="h5 card-title fw-bold mb-0 text-dark">Security and Two-Factor Authentication</div>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="h6 fw-semibold text-dark mb-1">Two-Factor Authentication (OTP)</h2>
+                            <p class="text-muted small mb-2">
+                                Require a 6-digit one-time passcode generated for your account whenever you sign in. This protects against unauthorized access.
+                            </p>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="small fw-semibold text-secondary">Current status:</span>
+                                {% if user_profile and user_profile.two_factor_enabled %}
+                                <span class="badge bg-success rounded-0">Enabled</span>
+                                {% else %}
+                                <span class="badge bg-secondary rounded-0">Disabled</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                            <form method="POST" action="{% url 'toggle-2fa' %}">
+                                {% csrf_token %}
+                                {% if user_profile and user_profile.two_factor_enabled %}
+                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-0">
+                                    Disable 2FA
+                                </button>
+                                {% else %}
+                                <button type="submit" class="btn btn-primary btn-sm rounded-0" style="background-color: var(--arms-primary, #315b6b); border-color: var(--arms-primary, #315b6b);">
+                                    Enable 2FA
+                                </button>
+                                {% endif %}
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock pageContent%}
+{% endblock pageContent %}

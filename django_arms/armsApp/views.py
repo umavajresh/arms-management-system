@@ -1,25 +1,23 @@
-403
 import datetime
-import os
-import requests
-from django.shortcuts import redirect, render
 import json
+import logging
+import os
+
+import requests
 from django.contrib import messages
-from django.contrib.auth.models import User
-from django.http import HttpResponse, JsonResponse
-from django.utils import timezone
-from armsApp import models, forms
-from django.http import HttpResponse
-from django.db.models import Q, Min, Max
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import User
 from django.db import transaction
+from django.db.models import Q, Min, Max
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.crypto import constant_time_compare
 
-import json
-
-from django.http import HttpResponse
-from django.shortcuts import render, redirect
-
+from armsApp import models, forms
 
 from armsApp.utils import context_data
 from armsApp.ai_chatbot import (
@@ -27,23 +25,21 @@ from armsApp.ai_chatbot import (
     extract_travel_preferences,
     search_real_flights,
 )
-import logging
-
 logger = logging.getLogger(__name__)
-    
-@login_required
-def update_reservation(request):
-    resp = { 'status' : 'failed', 'msg' : '' }
-    if not request.method == 'POST':
-        resp['msg'] = 'No data has been sent'
-    else:
-        try:
-            models.Reservation.objects.filter(id = request.POST['id']).update(status=request.POST['status'])
-            resp['status'] = 'success'
-            messages.success(request, "Reservation Status has been updated successfully")
-        except:
-            resp['msg'] = 'Reservation Status has failed to update'
-    return HttpResponse(json.dumps(resp), content_type="application/json")
+
+
+def _flight_seat_inventory(flight):
+    inventory = {}
+    for seat_type, seat_class, prefix, capacity, letters in (
+        ('1', 'business', 'B', flight.business_class_slots, 'ABCD'),
+        ('2', 'economy', 'E', flight.economy_slots, 'ABCDEF'),
+    ):
+        for index in range(max(0, capacity)):
+            row, letter_index = divmod(index, len(letters))
+            seat = f"{prefix}{row + 1}{letters[letter_index]}"
+            inventory[seat] = {'type': seat_type, 'class': seat_class}
+    return inventory
+
 
 def landing_page(request):
     # Clear any potential cache data
@@ -133,37 +129,56 @@ def user_reservations(request):
         return redirect("login-page")
 
 def cancel_reservation(request):
-    resp = {"status": "failed", "msg": ""}
-    if not request.method == 'POST':
-        resp['msg'] = "No data has been sent."
-    else:
-        reservation_id = request.POST.get('id')
-        try:
-            reservation = models.Reservation.objects.get(id=reservation_id, user=request.user)
-            
-            # Check if flight has already departed
-            from django.utils import timezone
-            current_time = timezone.now()
-            
-            if reservation.flight.departure <= current_time:
-                resp['msg'] = "Cannot cancel reservation. The flight has already departed."
-                return HttpResponse(json.dumps(resp), content_type="application/json")
-            
-            # Check if reservation is already cancelled
-            if reservation.status == '2':
-                resp['msg'] = "This reservation has already been cancelled."
-                return HttpResponse(json.dumps(resp), content_type="application/json")
-            
-            reservation.status = '2'  # Cancelled
-            reservation.save()
-            resp['status'] = 'success'
-            resp['msg'] = "Reservation successfully cancelled."
-        except models.Reservation.DoesNotExist:
-            resp['msg'] = "Reservation not found or you don't have permission to cancel it."
-        except Exception as e:
-            resp['msg'] = f"Error: {str(e)}"
-    
-    return HttpResponse(json.dumps(resp), content_type="application/json")
+    if request.method != 'POST':
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'A POST request is required.'},
+            status=405,
+        )
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Please sign in to cancel a reservation.'},
+            status=401,
+        )
+
+    reservation_id = request.POST.get('id', '')
+    if not reservation_id.isdecimal():
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'A valid reservation is required.'},
+            status=400,
+        )
+
+    try:
+        with transaction.atomic():
+            reservation = models.Reservation.objects.select_for_update().get(
+                pk=reservation_id,
+                user=request.user,
+            )
+            if not reservation.can_cancel():
+                return JsonResponse(
+                    {'status': 'failed', 'msg': reservation.get_cancellation_status()},
+                    status=409,
+                )
+            reservation.status = '2'
+            reservation.save(update_fields=['status'])
+    except models.Reservation.DoesNotExist:
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Reservation not found or unavailable.'},
+            status=404,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to cancel reservation %s for user %s",
+            reservation_id,
+            request.user.pk,
+        )
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Unable to cancel the reservation.'},
+            status=500,
+        )
+
+    return JsonResponse(
+        {'status': 'success', 'msg': 'Reservation successfully cancelled.'}
+    )
 
 def seat_selection(request, pk=None):
     context = context_data()
@@ -188,30 +203,6 @@ def seat_selection(request, pk=None):
             
         context['flight'] = flight
         
-        # Generate seat maps - this is a simplification
-        # In a real application, you'd check the database for taken seats
-        
-        # Business class seats (2-2 configuration: A,B | C,D)
-        business_seats = []
-        business_rows = (flight.business_class_slots + 3) // 4  # Calculate number of rows needed
-        
-        seat_letters = ['A', 'B', 'C', 'D']
-        for row in range(1, business_rows + 1):
-            for seat_letter in seat_letters:
-                seat_code = f"B{row}{seat_letter}"
-                
-                # Check if this seat is already reserved
-                is_reserved = models.Reservation.objects.filter(
-                    flight=flight,
-                    type='1',  # Business
-                    seat_number=seat_code,
-                    status__in=['0', '1']  # Pending or Confirmed
-                ).exists()
-                
-                business_seats.append({
-                    'seat': seat_code,
-                    'available': not is_reserved
-                })
     except models.Flights.DoesNotExist:
         messages.error(request, "Flight not found")
         return redirect('public-page')
@@ -219,27 +210,24 @@ def seat_selection(request, pk=None):
         messages.error(request, f"An error occurred: {str(e)}")
         return redirect('public-page')
     
-    # Economy seats (3-3 configuration: A,B,C | D,E,F)
-    economy_seats = []
-    economy_rows = (flight.economy_slots + 5) // 6  # Calculate number of rows needed
-    
-    seat_letters = ['A', 'B', 'C', 'D', 'E', 'F']
-    for row in range(1, economy_rows + 1):
-        for seat_letter in seat_letters:
-            seat_code = f"E{row}{seat_letter}"
-            
-            # Check if this seat is already reserved
-            is_reserved = models.Reservation.objects.filter(
-                flight=flight,
-                type='2',  # Economy
-                seat_number=seat_code,
-                status__in=['0', '1']  # Pending or Confirmed
-            ).exists()
-            
-            economy_seats.append({
-                'seat': seat_code,
-                'available': not is_reserved
-            })
+    inventory = _flight_seat_inventory(flight)
+    reserved_seats = set(
+        models.Reservation.objects.filter(
+            flight=flight,
+            status__in=['0', '1'],
+            seat_number__in=inventory,
+        ).values_list('seat_number', flat=True)
+    )
+    business_seats = [
+        {'seat': seat, 'available': seat not in reserved_seats}
+        for seat, details in inventory.items()
+        if details['type'] == '1'
+    ]
+    economy_seats = [
+        {'seat': seat, 'available': seat not in reserved_seats}
+        for seat, details in inventory.items()
+        if details['type'] == '2'
+    ]
     
     context['business_seats'] = business_seats
     context['economy_seats'] = economy_seats
@@ -255,57 +243,75 @@ def seat_selection(request, pk=None):
                 messages.error(request, "Please select your seats and passenger count")
                 return render(request, 'seat_selection.html', context)
             
-            # Parse the JSON data
+            # Parse and validate the submitted seats against the flight inventory.
             try:
                 seats_info = json.loads(selected_seats_data)
-                selected_seats = seats_info.get('seats', [])
-                passenger_count = seats_info.get('passenger_count', 1)
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, TypeError):
                 messages.error(request, "Invalid seat selection data. Please try again.")
                 return render(request, 'seat_selection.html', context)
-            
-            if not selected_seats or len(selected_seats) == 0:
-                messages.error(request, "Please select at least one seat")
+
+            if not isinstance(seats_info, dict):
+                messages.error(request, "Invalid seat selection data. Please try again.")
                 return render(request, 'seat_selection.html', context)
-            
-            if len(selected_seats) != passenger_count:
-                messages.error(request, f"Please select exactly {passenger_count} seats")
+
+            selected_seats = seats_info.get('seats')
+            passenger_count = seats_info.get('passenger_count')
+            if (
+                not isinstance(selected_seats, list)
+                or type(passenger_count) is not int
+                or not 1 <= passenger_count <= 6
+                or len(selected_seats) != passenger_count
+            ):
+                messages.error(request, "Select between one and six seats, one for each passenger.")
                 return render(request, 'seat_selection.html', context)
-            
-            # Verify all seats are still available
-            unavailable_seats = []
+
+            canonical_seats = []
+            unavailable_seats = set()
+            selected_seat_codes = set()
             for seat_info in selected_seats:
+                if not isinstance(seat_info, dict):
+                    messages.error(request, "Invalid seat selection data. Please try again.")
+                    return render(request, 'seat_selection.html', context)
+
                 seat_number = seat_info.get('seat')
-                seat_class = seat_info.get('class')
-                
-                # Determine the type code based on class
-                type_code = '1' if seat_class == 'business' else '2'
-                
-                # Check if seat is available
-                is_reserved = models.Reservation.objects.filter(
-                    flight=flight,
-                    seat_number=seat_number,
-                    status__in=['0', '1']  # Pending or Confirmed
-                ).exists()
-                
-                if is_reserved:
-                    unavailable_seats.append(seat_number)
-            
+                seat = inventory.get(seat_number) if isinstance(seat_number, str) else None
+                if (
+                    seat is None
+                    or seat_info.get('class') != seat['class']
+                    or seat_number in selected_seat_codes
+                ):
+                    messages.error(request, "One or more selected seats are invalid.")
+                    return render(request, 'seat_selection.html', context)
+
+                selected_seat_codes.add(seat_number)
+                canonical_seats.append({
+                    'seat': seat_number,
+                    'type': seat['type'],
+                    'class': seat['class'],
+                })
+
+                if seat_number in reserved_seats:
+                    unavailable_seats.add(seat_number)
+
             if unavailable_seats:
-                messages.error(request, f"Sorry, the following seats are no longer available: {', '.join(unavailable_seats)}. Please select different seats.")
+                messages.error(
+                    request,
+                    "Some selected seats are no longer available. Please select different seats.",
+                )
                 return render(request, 'seat_selection.html', context)
-            
-            # Store multi-seat data in session for the next step
+
             request.session['selected_flight'] = str(pk)
-            request.session['selected_seats_data'] = selected_seats_data
+            request.session['selected_seats_data'] = json.dumps({
+                'passenger_count': passenger_count,
+                'seats': canonical_seats,
+            })
             request.session['passenger_count'] = passenger_count
-            
+
             try:
-                # Redirect to reservation form
                 return redirect('reserve-form', pk=pk)
             except Exception as e:
                 logger.exception("Redirect error during seat selection")
-                messages.error(request, f"Error during redirect: {str(e)}")
+                messages.error(request, "Unable to continue to the reservation form.")
                 return render(request, 'seat_selection.html', context)
             
         except Exception as e:
@@ -366,7 +372,7 @@ def save_register(request):
                         is_admin=False,
                         user_type='user',
                         security_question=form.cleaned_data['security_question'],
-                        security_answer=form.cleaned_data['security_answer'],
+                        security_answer=make_password(form.cleaned_data['security_answer']),
                         date_of_birth=form.cleaned_data['date_of_birth'],
                     )
             except Exception:
@@ -383,7 +389,7 @@ def save_register(request):
                 for error in error_list:
                     error_messages.append(f"[{field_name}] {error}")
             
-            resp['msg'] = "<br>".join(error_messages)
+            resp['msg'] = "; ".join(error_messages)
             if not resp['msg']:
                 resp['msg'] = "Form validation failed. Please check all fields and try again."
     except Exception:
@@ -391,8 +397,6 @@ def save_register(request):
         resp['msg'] = "An unexpected error occurred. Please try again."
     
     # Ensure the return statement is always executed
-    return HttpResponse(json.dumps(resp), content_type="application/json")
-            
     return HttpResponse(json.dumps(resp), content_type="application/json")
 
 @login_required
@@ -468,7 +472,7 @@ def login_page(request):
     return render(request, 'login.html', context)
 
 def login_user(request):
-    resp = {"status":'failed','msg':'', 'redirect': ''}
+    resp = {"status": 'failed', 'msg': '', 'redirect': ''}
     if request.method == 'POST':
         username = (request.POST.get('username') or '').strip()
         password = request.POST.get('password') or ''
@@ -484,24 +488,150 @@ def login_user(request):
             
         if user is not None:
             if user.is_active:
+                user_profile = getattr(user, 'profile', None)
+                if not user_profile:
+                    try:
+                        user_profile = UserProfile.objects.get(user=user)
+                    except UserProfile.DoesNotExist:
+                        user_profile = None
+
+                if user_profile and user_profile.two_factor_enabled:
+                    otp_code = user_profile.generate_otp()
+                    request.session['2fa_user_id'] = user.id
+                    request.session['2fa_attempts'] = 0
+                    logger.info("2FA OTP generated for user %s: %s", user.username, otp_code)
+                    resp['status'] = '2fa_required'
+                    resp['redirect'] = reverse('verify-2fa')
+                    return HttpResponse(json.dumps(resp), content_type='application/json')
+
                 login(request, user)
                 resp['status'] = 'success'
                 
                 # Direct redirect based on user type
                 try:
-                    profile = UserProfile.objects.get(user=user)
-                    if profile.user_type == 'admin':
+                    if user_profile and user_profile.user_type == 'admin':
                         resp['redirect'] = '/home'  # Admin dashboard
                     else:
                         resp['redirect'] = '/user_dashboard'  # Regular user dashboard
-                except:
+                except Exception:
                     # If no profile exists yet, redirect to user dashboard
                     resp['redirect'] = '/user_dashboard'
             else:
                 resp['msg'] = "Account is inactive"
         else:
             resp['msg'] = "Incorrect User ID or password"
-    return HttpResponse(json.dumps(resp),content_type='application/json')
+    return HttpResponse(json.dumps(resp), content_type='application/json')
+
+
+def verify_2fa(request):
+    if request.user.is_authenticated:
+        try:
+            if request.user.profile.user_type == 'admin':
+                return redirect('home-page')
+        except Exception:
+            pass
+        return redirect('user-dashboard')
+
+    user_id = request.session.get('2fa_user_id')
+    if not user_id:
+        messages.error(request, "Your two-factor verification session has expired. Please sign in again.")
+        return redirect('login-page')
+
+    from armsApp.models import UserProfile
+    from django.contrib.auth.models import User
+
+    user = User.objects.filter(id=user_id, is_active=True).first()
+    if not user:
+        request.session.pop('2fa_user_id', None)
+        request.session.pop('2fa_attempts', None)
+        messages.error(request, "User account not found. Please sign in again.")
+        return redirect('login-page')
+
+    try:
+        profile = user.profile
+    except UserProfile.DoesNotExist:
+        request.session.pop('2fa_user_id', None)
+        request.session.pop('2fa_attempts', None)
+        messages.error(request, "User profile not found. Please sign in again.")
+        return redirect('login-page')
+
+    context = context_data()
+    context['page_title'] = "Two-Factor Verification"
+    context['topbar'] = False
+    context['footer'] = False
+    context['verify_username'] = user.username
+    if user.email and '@' in user.email:
+        name_part, domain_part = user.email.split('@', 1)
+        masked_name = name_part[0] + '***' if len(name_part) > 1 else '***'
+        context['masked_email'] = f"{masked_name}@{domain_part}"
+    else:
+        context['masked_email'] = None
+
+    if request.method == 'POST':
+        attempts = request.session.get('2fa_attempts', 0) + 1
+        request.session['2fa_attempts'] = attempts
+
+        if attempts > 5:
+            request.session.pop('2fa_user_id', None)
+            request.session.pop('2fa_attempts', None)
+            messages.error(request, "Too many failed verification attempts. Please sign in again.")
+            return redirect('login-page')
+
+        otp_code = (request.POST.get('otp_code') or '').strip()
+        if not otp_code:
+            messages.error(request, "Please enter the 6-digit verification code.")
+            return render(request, 'verify_2fa.html', context)
+
+        if profile.verify_otp(otp_code):
+            request.session.pop('2fa_user_id', None)
+            request.session.pop('2fa_attempts', None)
+            login(request, user)
+            messages.success(request, f"Welcome back, {user.first_name or user.username}. Two-factor authentication verified.")
+            if profile.user_type == 'admin':
+                return redirect('home-page')
+            return redirect('user-dashboard')
+        else:
+            messages.error(request, "Invalid or expired verification code. Please check and try again.")
+            return render(request, 'verify_2fa.html', context)
+
+    return render(request, 'verify_2fa.html', context)
+
+
+def resend_2fa_otp(request):
+    user_id = request.session.get('2fa_user_id')
+    if not user_id:
+        messages.error(request, "Your two-factor verification session has expired.")
+        return redirect('login-page')
+
+    from django.contrib.auth.models import User
+    user = User.objects.filter(id=user_id, is_active=True).first()
+    if not user:
+        request.session.pop('2fa_user_id', None)
+        return redirect('login-page')
+
+    profile = getattr(user, 'profile', None)
+    if profile:
+        profile.generate_otp()
+        messages.info(request, "A new 6-digit verification code has been generated.")
+    return redirect('verify-2fa')
+
+
+@login_required
+def toggle_2fa(request):
+    if request.method == 'POST':
+        from armsApp.models import UserProfile
+        profile, _ = UserProfile.objects.get_or_create(
+            user=request.user,
+            defaults={'custom_id': f"UID{request.user.id}", 'mobile': ''}
+        )
+        profile.two_factor_enabled = not profile.two_factor_enabled
+        if not profile.two_factor_enabled:
+            profile.clear_otp()
+        profile.save(update_fields=['two_factor_enabled'])
+
+        status_text = "enabled" if profile.two_factor_enabled else "disabled"
+        messages.success(request, f"Two-factor authentication has been {status_text} for your account.")
+    return redirect('profile-page')
 
 def search_flight(request):
     context = context_data()
@@ -780,180 +910,225 @@ def search_result(request, fromA=None, toA=None, departure = None):
         return render(request, 'search_result.html', context)
 
 def save_reservation(request):
-    resp = { 'status': 'failed', 'msg':'' }
-    if not request.method == 'POST':
-        resp['msg'] = "No data has been sent."
+    if request.method != 'POST':
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'A POST request is required.'},
+            status=405,
+        )
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Please sign in before submitting a reservation.'},
+            status=401,
+        )
+
+    verified_until = request.session.get('reservation_verified_until')
+    if (
+        not isinstance(verified_until, (int, float))
+        or timezone.now().timestamp() >= verified_until
+    ):
+        request.session.pop('reservation_verified_until', None)
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Please complete password and security verification again.'},
+            status=403,
+        )
+
+    flight_id = request.POST.get('flight', '')
+    if not flight_id or str(request.session.get('selected_flight')) != flight_id:
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Please select seats for this flight again.'},
+            status=400,
+        )
+    try:
+        flight = models.Flights.objects.get(pk=flight_id)
+    except (models.Flights.DoesNotExist, ValueError, TypeError):
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'The selected flight is unavailable.'},
+            status=400,
+        )
+
+    inventory = _flight_seat_inventory(flight)
+    selected_data = request.session.get('selected_seats_data')
+    if selected_data:
+        try:
+            selection = json.loads(selected_data)
+        except (json.JSONDecodeError, TypeError):
+            selection = None
+
+        count = selection.get('passenger_count') if isinstance(selection, dict) else None
+        seat_items = selection.get('seats') if isinstance(selection, dict) else None
+        try:
+            submitted_count = int(request.POST.get('passenger_count', ''))
+        except (TypeError, ValueError):
+            submitted_count = None
+        if (
+            type(count) is not int
+            or not 1 <= count <= 6
+            or submitted_count != count
+            or not isinstance(seat_items, list)
+            or len(seat_items) != count
+        ):
+            return JsonResponse(
+                {'status': 'failed', 'msg': 'Please select seats for all passengers again.'},
+                status=400,
+            )
     else:
-        # Check if this is a multi-passenger reservation
-        passenger_count = int(request.POST.get('passenger_count', 1))
-        
-        if passenger_count > 1:
-            # Handle multi-passenger reservation
-            try:
-                from django.utils import timezone
-                current_time = timezone.now()
-                
-                # Get flight details from the form
-                flight_id = request.POST.get('flight')
-                flight = models.Flights.objects.get(id=flight_id)
-                
-                if flight.departure <= current_time:
-                    resp['msg'] = "Sorry, this flight has already departed. You cannot make a reservation for a past flight."
-                    return HttpResponse(json.dumps(resp), content_type="application/json")
-                
-                # Collect all passenger data and validate seats
-                passengers_data = []
-                reserved_seats = []
-                
-                for i in range(passenger_count):
-                    # Get passenger information
-                    passenger_data = {
-                        'first_name': request.POST.get(f'passenger_{i}_first_name'),
-                        'middle_name': request.POST.get(f'passenger_{i}_middle_name', ''),
-                        'last_name': request.POST.get(f'passenger_{i}_last_name'),
-                        'gender': request.POST.get(f'passenger_{i}_gender'),
-                        'age': request.POST.get(f'passenger_{i}_age', ''),
-                        'seat': request.POST.get(f'passenger_{i}_seat'),
-                        'type': request.POST.get(f'passenger_{i}_type', '2')
-                    }
-                    
-                    # Validate required fields
-                    if not all([passenger_data['first_name'], passenger_data['last_name'], 
-                               passenger_data['gender'], passenger_data['seat']]):
-                        resp['msg'] = f"Please complete all required information for Passenger {i+1}"
-                        return HttpResponse(json.dumps(resp), content_type="application/json")
-                    
-                    # Check if seat is available
-                    is_reserved = models.Reservation.objects.filter(
-                        flight=flight,
-                        seat_number=passenger_data['seat'],
-                        status__in=['0', '1']  # Pending or Confirmed
-                    ).exists()
-                    
-                    if is_reserved or passenger_data['seat'] in reserved_seats:
-                        resp['msg'] = f"Sorry, seat {passenger_data['seat']} is no longer available. Please go back and select different seats."
-                        return HttpResponse(json.dumps(resp), content_type="application/json")
-                    
-                    reserved_seats.append(passenger_data['seat'])
-                    passengers_data.append(passenger_data)
-                
-                # Get shared contact information
-                contact_info = {
-                    'email': request.POST.get('email'),
-                    'contact': request.POST.get('contact'),
-                    'address': request.POST.get('address', '')
-                }
-                
-                # Create reservations for all passengers
-                created_reservations = []
-                for i, passenger in enumerate(passengers_data):
-                    reservation = models.Reservation(
-                        flight=flight,
-                        first_name=passenger['first_name'],
-                        middle_name=passenger['middle_name'] or '',
-                        last_name=passenger['last_name'],
-                        gender=passenger['gender'],
-                        email=contact_info['email'],
-                        contact=contact_info['contact'],
-                        address=contact_info['address'],
-                        seat_number=passenger['seat'],
-                        type=passenger['type'],
-                        status='0'  # Pending Admin Approval
-                    )
-                    
-                    # Link to user if authenticated
-                    if request.user.is_authenticated:
-                        reservation.user = request.user
-                    
-                    reservation.save()
-                    created_reservations.append(reservation)
-                
-                # Clear session data
-                session_keys_to_clear = [
-                    'selected_seat', 'selected_type', 'selected_flight', 
-                    'selected_seats_data', 'passenger_count'
-                ]
-                for key in session_keys_to_clear:
-                    if key in request.session:
-                        del request.session[key]
-                
-                resp['status'] = 'success'
-                resp['msg'] = f"Your group reservation for {passenger_count} passengers has been submitted successfully! All bookings are now pending admin approval. You will be notified once the admin reviews your reservations. Thank you!"
-                messages.success(request, resp['msg'])
-                
-            except Exception as e:
-                resp['msg'] = f"An error occurred while processing your group reservation: {str(e)}"
-        
+        count = 1
+        legacy_seat = request.session.get('selected_seat')
+        legacy_type = request.session.get('selected_type')
+        seat = inventory.get(legacy_seat) if isinstance(legacy_seat, str) else None
+        if not seat or seat['type'] != legacy_type:
+            return JsonResponse(
+                {'status': 'failed', 'msg': 'Please select a valid seat again.'},
+                status=400,
+            )
+        seat_items = [{
+            'seat': legacy_seat,
+            'type': legacy_type,
+            'class': seat['class'],
+        }]
+
+    seen_seats = set()
+    canonical_seats = []
+    for index, seat_info in enumerate(seat_items):
+        if not isinstance(seat_info, dict):
+            return JsonResponse(
+                {'status': 'failed', 'msg': 'The seat selection is invalid.'},
+                status=400,
+            )
+        seat_number = seat_info.get('seat')
+        seat = inventory.get(seat_number) if isinstance(seat_number, str) else None
+        if (
+            not seat
+            or seat_info.get('type') != seat['type']
+            or seat_info.get('class') != seat['class']
+            or seat_number in seen_seats
+        ):
+            return JsonResponse(
+                {'status': 'failed', 'msg': 'The seat selection is invalid.'},
+                status=400,
+            )
+        seen_seats.add(seat_number)
+        if selected_data and (
+            request.POST.get(f'passenger_{index}_seat') != seat_number
+            or request.POST.get(f'passenger_{index}_type') != seat['type']
+        ):
+            return JsonResponse(
+                {'status': 'failed', 'msg': 'The passenger seat selection has changed. Please start again.'},
+                status=400,
+            )
+        canonical_seats.append({
+            'seat': seat_number,
+            'type': seat['type'],
+        })
+
+    passenger_forms = []
+    for index, seat in enumerate(canonical_seats):
+        if selected_data:
+            form_data = {
+                'first_name': request.POST.get(f'passenger_{index}_first_name', ''),
+                'middle_name': request.POST.get(f'passenger_{index}_middle_name', ''),
+                'last_name': request.POST.get(f'passenger_{index}_last_name', ''),
+                'gender': request.POST.get(f'passenger_{index}_gender', ''),
+            }
         else:
-            # Handle single passenger reservation (original code)
-            form = forms.SaveReservation(request.POST)
-            if form.is_valid():
-                try:
-                    reservation = form.save(commit=False)
-                    
-                    # Check if flight has already departed
-                    from django.utils import timezone
-                    current_time = timezone.now()
-                    
-                    if reservation.flight.departure <= current_time:
-                        resp['msg'] = "Sorry, this flight has already departed. You cannot make a reservation for a past flight."
-                        return HttpResponse(json.dumps(resp), content_type="application/json")
-                    
-                    # Link reservation to current user if authenticated
-                    if request.user.is_authenticated:
-                        reservation.user = request.user
-                    
-                    # Add seat number from form data or session
-                    if 'seat_number' in request.POST and request.POST['seat_number']:
-                        reservation.seat_number = request.POST['seat_number']
-                        if 'type' in request.POST and request.POST['type']:
-                            reservation.type = request.POST['type']
-                    elif 'selected_seat' in request.session:
-                        reservation.seat_number = request.session.get('selected_seat')
-                        reservation.type = request.session.get('selected_type', '2')  # Default to economy if not set
-                    
-                    # Check if seat is still available
-                    is_reserved = models.Reservation.objects.filter(
-                        flight=reservation.flight,
-                        type=reservation.type,
-                        seat_number=reservation.seat_number,
-                        status__in=['0', '1']  # Pending or Confirmed
-                    ).exists()
-                    
-                    if is_reserved:
-                        resp['msg'] = "Sorry, this seat has been taken. Please go back and select another seat."
-                        return HttpResponse(json.dumps(resp), content_type="application/json")
-                    
-                    # Set reservation status to pending admin approval
-                    reservation.status = '0'  # Pending Admin Approval
-                    
-                    # Save the reservation
-                    reservation.save()
-                    
-                    # Clear the session data after successful save
-                    session_keys_to_clear = [
-                        'selected_seat', 'selected_type', 'selected_flight',
-                        'selected_seats_data', 'passenger_count'
-                    ]
-                    for key in session_keys_to_clear:
-                        if key in request.session:
-                            del request.session[key]
-                        
-                    resp['status'] = 'success'
-                    resp['msg'] = "Your reservation has been submitted successfully! It is now pending admin approval. You will be notified once the admin reviews your booking. Thank you!"
-                    messages.success(request, f"{resp['msg']}")
-                    
-                except Exception as e:
-                    resp['msg'] = f"An error occurred: {str(e)}"
-            else:
-                for field in form:
-                    for error in field.errors:
-                        if not resp['msg'] == '':
-                            resp['msg'] += str("<br />")
+            form_data = {
+                'first_name': request.POST.get('first_name', ''),
+                'middle_name': request.POST.get('middle_name', ''),
+                'last_name': request.POST.get('last_name', ''),
+                'gender': request.POST.get('gender', ''),
+            }
+        if form_data['gender'] not in {'Male', 'Female'}:
+            return JsonResponse(
+                {'status': 'failed', 'msg': f'Please enter valid details for Passenger {index + 1}.'},
+                status=400,
+            )
+        form_data.update({
+            'flight': str(flight.pk),
+            'type': seat['type'],
+            'seat_number': seat['seat'],
+            'email': request.POST.get('email', ''),
+            'contact': request.POST.get('contact', ''),
+            'address': request.POST.get('address', ''),
+        })
+        form = forms.SaveReservation(data=form_data)
+        if not form.is_valid():
+            errors = ' '.join(
+                f"{field}: {' '.join(error_list)}"
+                for field, error_list in form.errors.items()
+            )
+            return JsonResponse(
+                {'status': 'failed', 'msg': errors or 'Please check the reservation details.'},
+                status=400,
+            )
+        reservation = form.save(commit=False)
+        reservation.user = request.user
+        reservation.status = '0'
+        passenger_forms.append(reservation)
 
-                        resp['msg'] += str(f"[{field.name}] {error}")
-    return HttpResponse(json.dumps(resp), content_type="application/json")
+    try:
+        with transaction.atomic():
+            locked_flight = models.Flights.objects.select_for_update().get(pk=flight.pk)
+            if locked_flight.departure <= timezone.now():
+                return JsonResponse(
+                    {'status': 'failed', 'msg': 'This flight has already departed.'},
+                    status=400,
+                )
 
+            current_inventory = _flight_seat_inventory(locked_flight)
+            if any(
+                current_inventory.get(item.seat_number, {}).get('type') != item.type
+                for item in passenger_forms
+            ):
+                return JsonResponse(
+                    {'status': 'failed', 'msg': 'The selected seats are no longer valid.'},
+                    status=409,
+                )
+            taken = set(
+                models.Reservation.objects.filter(
+                    flight=locked_flight,
+                    status__in=['0', '1'],
+                    seat_number__in=seen_seats,
+                ).values_list('seat_number', flat=True)
+            )
+            if taken:
+                return JsonResponse(
+                    {'status': 'failed', 'msg': 'A selected seat is no longer available. Please choose another seat.'},
+                    status=409,
+                )
+
+            for reservation in passenger_forms:
+                reservation.flight = locked_flight
+                reservation.save()
+    except models.Flights.DoesNotExist:
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'The selected flight is unavailable.'},
+            status=400,
+        )
+    except Exception:
+        logger.exception("Unable to save reservation")
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Unable to submit the reservation. Please try again.'},
+            status=500,
+        )
+
+    for key in (
+        'selected_seat',
+        'selected_type',
+        'selected_flight',
+        'selected_seats_data',
+        'passenger_count',
+        'reservation_verified_until',
+    ):
+        request.session.pop(key, None)
+    message = (
+        "Your reservation has been submitted successfully. It is now pending admin approval."
+        if count == 1
+        else f"Your reservation for {count} passengers has been submitted successfully. It is now pending admin approval."
+    )
+    messages.success(request, message)
+    return JsonResponse({'status': 'success', 'msg': message})
+
+@login_required
 def reserve_form(request, pk=None):
     context = context_data()
     context['page'] = 'Search Result'
@@ -976,83 +1151,124 @@ def reserve_form(request, pk=None):
             
         context['flight'] = flight
         
-        # Check if we have seat selection in the session
+        inventory = _flight_seat_inventory(flight)
+        reserved_seats = set(
+            models.Reservation.objects.filter(
+                flight=flight,
+                status__in=['0', '1'],
+                seat_number__in=inventory,
+            ).values_list('seat_number', flat=True)
+        )
+
         selected_seats_data = request.session.get('selected_seats_data')
         passenger_count = request.session.get('passenger_count', 1)
         selected_flight = request.session.get('selected_flight')
-        
-        # Legacy support for single seat selection
         selected_seat = request.session.get('selected_seat')
         selected_type = request.session.get('selected_type')
-        
-        # Validate that the seat selection matches the current flight
+
         if selected_flight and str(selected_flight) == str(pk):
-            # Check for multi-seat selection first
-            if selected_seats_data and passenger_count:
+            if selected_seats_data:
                 try:
-                    import json
                     seats_info = json.loads(selected_seats_data)
-                    selected_seats = seats_info.get('seats', [])
-                    
-                    if selected_seats and len(selected_seats) == passenger_count:
-                        # Multi-passenger reservation
-                        context['selected_seats'] = selected_seats
-                        context['passenger_count'] = passenger_count
-                        context['is_multi_passenger'] = True
-                        
-                        # Calculate total price for all seats
-                        total_price = 0
-                        seat_details = []
-                        
-                        for seat_info in selected_seats:
-                            seat_class = seat_info.get('class')
-                            if seat_class == 'business':
-                                seat_price = flight.business_class_price
-                                class_name = "Business Class"
-                            else:
-                                seat_price = flight.economy_price
-                                class_name = "Economy"
-                            
-                            total_price += seat_price
-                            seat_details.append({
-                                'seat': seat_info.get('seat'),
-                                'class': class_name,
-                                'price': seat_price
-                            })
-                        
-                        context['seat_details'] = seat_details
-                        context['total_price'] = total_price
-                    else:
-                        messages.error(request, "Invalid seat selection data. Please select seats again.")
-                        return redirect('seat-selection', pk=pk)
-                        
-                except (json.JSONDecodeError, KeyError) as e:
+                except (json.JSONDecodeError, TypeError):
                     logger.exception("Error parsing seat selection data")
                     messages.error(request, "Invalid seat selection data. Please select seats again.")
                     return redirect('seat-selection', pk=pk)
-                    
-            # Fallback to legacy single seat selection
+
+                selected_seats = seats_info.get('seats') if isinstance(seats_info, dict) else None
+                count = seats_info.get('passenger_count') if isinstance(seats_info, dict) else None
+                if (
+                    not isinstance(selected_seats, list)
+                    or type(count) is not int
+                    or count != passenger_count
+                    or not 1 <= count <= 6
+                    or len(selected_seats) != count
+                ):
+                    messages.error(request, "Invalid seat selection data. Please select seats again.")
+                    return redirect('seat-selection', pk=pk)
+
+                canonical_seats = []
+                seen_seats = set()
+                for seat_info in selected_seats:
+                    if not isinstance(seat_info, dict):
+                        messages.error(request, "Invalid seat selection data. Please select seats again.")
+                        return redirect('seat-selection', pk=pk)
+                    seat_number = seat_info.get('seat')
+                    seat = inventory.get(seat_number) if isinstance(seat_number, str) else None
+                    if (
+                        seat is None
+                        or seat_info.get('type') != seat['type']
+                        or seat_info.get('class') != seat['class']
+                        or seat_number in seen_seats
+                        or seat_number in reserved_seats
+                    ):
+                        messages.error(request, "A selected seat is invalid or no longer available.")
+                        return redirect('seat-selection', pk=pk)
+                    seen_seats.add(seat_number)
+                    class_name = "Business Class" if seat['type'] == '1' else "Economy"
+                    seat_price = (
+                        flight.business_class_price if seat['type'] == '1'
+                        else flight.economy_price
+                    )
+                    canonical_seats.append({
+                        'seat': seat_number,
+                        'type': seat['type'],
+                        'class': seat['class'],
+                        'display_class': class_name,
+                        'price': seat_price,
+                    })
+
+                context['selected_seats'] = canonical_seats
+                context['passenger_count'] = count
+                context['is_multi_passenger'] = True
+                context['seat_details'] = [
+                    {
+                        'seat': item['seat'],
+                        'class': item['display_class'],
+                        'price': item['price'],
+                    }
+                    for item in canonical_seats
+                ]
+                context['total_price'] = sum(item['price'] for item in canonical_seats)
+                context['reservation_payload'] = {
+                    'passenger_count': count,
+                    'is_multi_passenger': True,
+                    'selected_seats': canonical_seats,
+                }
             elif selected_seat and selected_type:
+                seat = inventory.get(selected_seat)
+                if (
+                    seat is None
+                    or selected_type != seat['type']
+                    or selected_seat in reserved_seats
+                ):
+                    messages.error(request, "The selected seat is invalid or no longer available.")
+                    return redirect('seat-selection', pk=pk)
                 context['selected_seat'] = selected_seat
                 context['selected_type'] = selected_type
                 context['passenger_count'] = 1
                 context['is_multi_passenger'] = False
-                seat_class = "Business Class" if selected_type == '1' else "Economy"
+                seat_class = "Business Class" if seat['type'] == '1' else "Economy"
                 context['seat_class'] = seat_class
-                
-                # Calculate price based on seat type
-                if selected_type == '1':
-                    context['seat_price'] = context['flight'].business_class_price
-                else:
-                    context['seat_price'] = context['flight'].economy_price
-                    
-                logger.debug("Single-passenger context prepared: seat=%s, class=%s, price=%s", selected_seat, seat_class, context.get('seat_price'))
+                context['seat_price'] = (
+                    flight.business_class_price if seat['type'] == '1'
+                    else flight.economy_price
+                )
+                context['reservation_payload'] = {
+                    'passenger_count': 1,
+                    'is_multi_passenger': False,
+                    'selected_seats': [{
+                        'seat': selected_seat,
+                        'type': seat['type'],
+                        'class': seat['class'],
+                        'display_class': seat_class,
+                        'price': context['seat_price'],
+                    }],
+                }
             else:
-                # No valid seat selection found
                 messages.warning(request, "Please select seats first")
                 return redirect('seat-selection', pk=pk)
         else:
-            # If no seat selection or flight mismatch, redirect to seat selection
             logger.debug("Session data mismatch: expected flight %s, got %s", pk, selected_flight)
             messages.warning(request, "Please select seats first")
             return redirect('seat-selection', pk=pk)
@@ -1061,14 +1277,15 @@ def reserve_form(request, pk=None):
             return render(request, 'reservation.html', context)
         except Exception as template_error:
             logger.exception("Template rendering error")
-            messages.error(request, f"Error rendering reservation form: {str(template_error)}")
+            messages.error(request, "Unable to display the reservation form.")
             return redirect('user-dashboard')
             
     except models.Flights.DoesNotExist:
         messages.error(request, "Flight not found")
         return redirect('public-page')
     except Exception as e:
-        messages.error(request, f"An error occurred: {str(e)}")
+        logger.exception("Unable to display reservation form")
+        messages.error(request, "Unable to display the reservation form.")
         return redirect('public-page')
 
 
@@ -1077,19 +1294,15 @@ def home(request):
     context = context_data()
     context['page'] = 'home'
     context['page_title'] = 'Home'
-    context['airlines'] = models.Airlines.objects.filter(delete_flag=0, status = 1).count()
-    context['airport'] = models.Airport.objects.filter(delete_flag=0, status = 1).count()
-    now = datetime.datetime.now()
-    year = now.strftime("%Y")
-    month = now.strftime("%m")
-    day = now.strftime("%d")
-    hour = now.strftime("%H")
-    context['flight'] = models.Flights.objects.filter(delete_flag=0,
-                            departure__year__gte = year,
-                            departure__month__gte = month,
-                            departure__day__gte = day,
-                            departure__hour__gte = hour,
-                            ).count()
+    context['airlines'] = models.Airlines.objects.filter(delete_flag=0, status=1).count()
+    context['airport'] = models.Airport.objects.filter(delete_flag=0, status=1).count()
+    context['aircraft'] = models.Aircraft.objects.filter(status='1').count()
+    context['flight'] = models.Flights.objects.filter(
+        delete_flag=0,
+        departure__gte=timezone.now(),
+    ).count()
+    context['pending_reservations'] = models.Reservation.objects.filter(status='0').count()
+    context['confirmed_reservations'] = models.Reservation.objects.filter(status='1').count()
     return render(request, 'home.html', context)
 
 def travel_chat(request):
@@ -1154,17 +1367,6 @@ def travel_chat_api(request):
         )
 
     # ---------------------------------------------------------
-    # 4. Generate AI travel response
-    # ---------------------------------------------------------
-    try:
-        response = get_travel_response(message)
-    except Exception as e:
-        response = (
-            "I could not generate the AI recommendation right now. "
-            "However, I can still search the available flights for you."
-        )
-
-    # ---------------------------------------------------------
     # 5. Search REAL flights from ARMS database
     # ---------------------------------------------------------
     try:
@@ -1173,7 +1375,18 @@ def travel_chat_api(request):
         flights = []
 
     # ---------------------------------------------------------
-    # 6. Build response
+    # 6. Generate a plan grounded in matching flight inventory
+    # ---------------------------------------------------------
+    try:
+        response = get_travel_response(message, flights)
+    except Exception as e:
+        response = (
+            "I could not generate the full travel plan right now. "
+            "Please try again, or search the flight inventory directly."
+        )
+
+    # ---------------------------------------------------------
+    # 7. Build response
     # ---------------------------------------------------------
     result = {
         'status': 'success',
@@ -1188,7 +1401,7 @@ def travel_chat_api(request):
     }
 
     # ---------------------------------------------------------
-    # 7. Return JSON
+    # 8. Return JSON
     # ---------------------------------------------------------
     return HttpResponse(
         json.dumps(result, default=str),
@@ -1261,24 +1474,34 @@ def save_airline(request):
             for field in form:
                 for error in field.errors:
                     if not resp['msg'] == '':
-                        resp['msg'] += str("<br />")
+                        resp['msg'] += "; "
 
                     resp['msg'] += str(f"[{field.name}] {error}")
     return HttpResponse(json.dumps(resp), content_type="application/json")
 
 @login_required
 def delete_airline(request, pk=None):
-    resp = { 'status' : 'failed', 'msg' : '' }
+    if request.method != 'POST':
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'A POST request is required.'},
+            status=405,
+        )
     if pk is None:
-        resp['msg'] = 'No ID has been sent'
-    else:
-        try:
-            models.Airlines.objects.filter(id = pk).update(delete_flag = 1)
-            resp['status'] = 'success'
-            messages.success(request, "Airline has been deleted successfully")
-        except:
-            resp['msg'] = 'Airline has failed to delete'
-    return HttpResponse(json.dumps(resp), content_type="application/json")
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'No ID has been sent.'},
+            status=400,
+        )
+
+    updated = models.Airlines.objects.filter(pk=pk, delete_flag=0).update(
+        delete_flag=1
+    )
+    if not updated:
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Airline not found.'},
+            status=404,
+        )
+    messages.success(request, "Airline has been archived successfully.")
+    return JsonResponse({'status': 'success', 'msg': 'Airline archived.'})
 
     
 #Airport
@@ -1325,24 +1548,34 @@ def save_airport(request):
             for field in form:
                 for error in field.errors:
                     if not resp['msg'] == '':
-                        resp['msg'] += str("<br />")
+                        resp['msg'] += "; "
 
                     resp['msg'] += str(f"[{field.name}] {error}")
     return HttpResponse(json.dumps(resp), content_type="application/json")
 
 @login_required
 def delete_airport(request, pk=None):
-    resp = { 'status' : 'failed', 'msg' : '' }
+    if request.method != 'POST':
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'A POST request is required.'},
+            status=405,
+        )
     if pk is None:
-        resp['msg'] = 'No ID has been sent'
-    else:
-        try:
-            models.Airport.objects.filter(id = pk).update(delete_flag = 1)
-            resp['status'] = 'success'
-            messages.success(request, "Airport has been deleted successfully")
-        except:
-            resp['msg'] = 'airport has failed to delete'
-    return HttpResponse(json.dumps(resp), content_type="application/json")
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'No ID has been sent.'},
+            status=400,
+        )
+
+    updated = models.Airport.objects.filter(pk=pk, delete_flag=0).update(
+        delete_flag=1
+    )
+    if not updated:
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Airport not found.'},
+            status=404,
+        )
+    messages.success(request, "Airport has been archived successfully.")
+    return JsonResponse({'status': 'success', 'msg': 'Airport archived.'})
 
 #Flight
 @login_required
@@ -1404,7 +1637,7 @@ def save_flight(request):
             for field in form:
                 for error in field.errors:
                     if not resp['msg'] == '':
-                        resp['msg'] += str("<br />")
+                        resp['msg'] += "; "
 
                     resp['msg'] += str(f"[{field.name}] {error}")
     return HttpResponse(json.dumps(resp), content_type="application/json")
@@ -1422,17 +1655,27 @@ def view_flight(request, pk = None):
 
 @login_required
 def delete_flight(request, pk=None):
-    resp = { 'status' : 'failed', 'msg' : '' }
+    if request.method != 'POST':
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'A POST request is required.'},
+            status=405,
+        )
     if pk is None:
-        resp['msg'] = 'No ID has been sent'
-    else:
-        try:
-            models.Flights.objects.filter(id = pk).update(delete_flag = 1)
-            resp['status'] = 'success'
-            messages.success(request, "Flight has been deleted successfully")
-        except:
-            resp['msg'] = 'Flight has failed to delete'
-    return HttpResponse(json.dumps(resp), content_type="application/json")
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'No ID has been sent.'},
+            status=400,
+        )
+
+    updated = models.Flights.objects.filter(pk=pk, delete_flag=0).update(
+        delete_flag=1
+    )
+    if not updated:
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Flight not found.'},
+            status=404,
+        )
+    messages.success(request, "Flight has been archived successfully.")
+    return JsonResponse({'status': 'success', 'msg': 'Flight archived.'})
 
 #Reservation
 @login_required
@@ -1455,38 +1698,76 @@ def view_reservation(request, pk = None):
 
 @login_required
 def delete_reservation(request, pk=None):
-    resp = { 'status' : 'failed', 'msg' : '' }
+    if request.method != 'POST':
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'A POST request is required.'},
+            status=405,
+        )
     if pk is None:
-        resp['msg'] = 'No ID has been sent'
-    else:
-        try:
-            models.Reservation.objects.filter(id = pk).delete()
-            resp['status'] = 'success'
-            messages.success(request, "Reservation has been deleted successfully")
-        except:
-            resp['msg'] = 'Reservation has failed to delete'
-    return HttpResponse(json.dumps(resp), content_type="application/json")
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'No ID has been sent.'},
+            status=400,
+        )
+
+    deleted_count, _ = models.Reservation.objects.filter(pk=pk).delete()
+    if not deleted_count:
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Reservation not found.'},
+            status=404,
+        )
+    messages.success(request, "Reservation has been deleted successfully.")
+    return JsonResponse({'status': 'success', 'msg': 'Reservation deleted.'})
 
 @login_required
 def update_reservation(request):
-    resp = { 'status' : 'failed', 'msg' : '' }
-    if not request.method == 'POST':
-        resp['msg'] = 'No ID has been sent'
-    else:
-        try:
-            models.Reservation.objects.filter(id = request.POST['id']).update(status=request.POST['status'])
-            resp['status'] = 'success'
-            messages.success(request, "Reservation Status has been updated successfully")
-        except:
-            resp['msg'] = 'Reservation Status has failed to update'
-    return HttpResponse(json.dumps(resp), content_type="application/json")
+    if request.method != 'POST':
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'A POST request is required.'},
+            status=405,
+        )
+
+    reservation_id = request.POST.get('id')
+    new_status = request.POST.get('status')
+    if not reservation_id or new_status not in {'1', '2'}:
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'A valid reservation and status are required.'},
+            status=400,
+        )
+
+    try:
+        with transaction.atomic():
+            reservation = models.Reservation.objects.select_for_update().get(
+                pk=reservation_id
+            )
+            if new_status == '1':
+                updated = reservation.approve_reservation()
+            elif reservation.status in {'0', '1'}:
+                reservation.status = '2'
+                reservation.save(update_fields=['status'])
+                updated = True
+            else:
+                updated = False
+    except models.Reservation.DoesNotExist:
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Reservation not found.'},
+            status=404,
+        )
+
+    if not updated:
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'This reservation can no longer be updated.'},
+            status=409,
+        )
+
+    messages.success(request, "Reservation Status has been updated successfully")
+    return JsonResponse({'status': 'success', 'msg': 'Reservation updated.'})
 
 @login_required
 def aircraft(request):
     context = context_data()
     context['page'] = 'aircraft'
     context['page_title'] = "Aircraft List"
-    context['aircraft_list'] = models.Aircraft.objects.all()
+    context['aircraft_list'] = models.Aircraft.objects.filter(delete_flag=0)
     return render(request, 'aircraft.html', context)
 
 @login_required
@@ -1546,17 +1827,31 @@ def save_aircraft(request):
 
 @login_required
 def delete_aircraft(request, pk=None):
-    resp = {'status': 'failed', 'msg': ''}
+    if request.method != 'POST':
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'A POST request is required.'},
+            status=405,
+        )
     if pk is None:
-        resp['msg'] = 'Aircraft ID is not provided.'
-    else:
-        try:
-            models.Aircraft.objects.filter(id=pk).delete()
-            resp['status'] = 'success'
-            messages.success(request, "Aircraft has been deleted successfully.")
-        except Exception as e:
-            resp['msg'] = f"Error deleting aircraft: {str(e)}"
-    return HttpResponse(json.dumps(resp), content_type="application/json")
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Aircraft ID is not provided.'},
+            status=400,
+        )
+
+    updated = models.Aircraft.objects.filter(
+        pk=pk,
+        delete_flag=0,
+    ).update(delete_flag=1)
+    if not updated:
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Aircraft not found.'},
+            status=404,
+        )
+
+    messages.success(request, "Aircraft has been archived successfully.")
+    return JsonResponse(
+        {'status': 'success', 'msg': 'Aircraft has been archived successfully.'}
+    )
 
 
 def get_captcha(request):
@@ -1589,69 +1884,126 @@ def get_captcha(request):
     return HttpResponse(captcha_html)
 
 
+def _reservation_verification_failure(request, message):
+    now = int(timezone.now().timestamp())
+    window_started = request.session.get('reservation_verify_window', now)
+    if not isinstance(window_started, int) or now - window_started >= 900:
+        window_started = now
+        request.session['reservation_verify_attempts'] = 0
+    current_attempts = request.session.get('reservation_verify_attempts', 0)
+    if not isinstance(current_attempts, int):
+        current_attempts = 0
+    attempts = current_attempts + 1
+    request.session['reservation_verify_window'] = window_started
+    request.session['reservation_verify_attempts'] = attempts
+    if attempts >= 5:
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Too many attempts. Please wait before trying again.'},
+            status=429,
+        )
+    return JsonResponse({'status': 'failed', 'msg': message}, status=400)
+
+
 def verify_reservation(request):
     """
     Verify user password and CAPTCHA before allowing reservation submission
     """
-    resp = {'status': 'failed', 'msg': ''}
-    
-    if not request.method == 'POST':
-        resp['msg'] = 'Invalid request method.'
-        return HttpResponse(json.dumps(resp), content_type="application/json")
+    if request.method != 'POST':
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'Invalid request method.'},
+            status=405,
+        )
     
     if not request.user.is_authenticated:
-        resp['msg'] = 'You must be logged in to make a reservation.'
-        return HttpResponse(json.dumps(resp), content_type="application/json")
+        return JsonResponse(
+            {'status': 'failed', 'msg': 'You must be logged in to make a reservation.'},
+            status=401,
+        )
+
+    request.session.pop('reservation_verified_until', None)
+    attempts = request.session.get('reservation_verify_attempts', 0)
+    if isinstance(attempts, int) and attempts >= 5:
+        window_started = request.session.get('reservation_verify_window', 0)
+        if (
+            isinstance(window_started, (int, float))
+            and timezone.now().timestamp() - window_started < 900
+        ):
+            return JsonResponse(
+                {'status': 'failed', 'msg': 'Too many attempts. Please wait before trying again.'},
+                status=429,
+            )
+        request.session.pop('reservation_verify_attempts', None)
+        request.session.pop('reservation_verify_window', None)
     
     # Verify password
     password = request.POST.get('password')
     if not password:
-        resp['msg'] = 'Password is required.'
-        return HttpResponse(json.dumps(resp), content_type="application/json")
-    
+        return _reservation_verification_failure(request, 'Password is required.')
+
     if not request.user.check_password(password):
-        resp['msg'] = 'Incorrect password. Please try again.'
-        return HttpResponse(json.dumps(resp), content_type="application/json")
+        return _reservation_verification_failure(
+            request,
+            'Incorrect password. Please try again.',
+        )
     
     # Verify CAPTCHA
     captcha_key = request.POST.get('captcha_0')
     captcha_value = request.POST.get('captcha_1')
     
     if not captcha_key or not captcha_value:
-        resp['msg'] = 'Please complete the security check.'
-        return HttpResponse(json.dumps(resp), content_type="application/json")
+        return _reservation_verification_failure(
+            request,
+            'Please complete the security check.',
+        )
     
     # Handle different CAPTCHA types
     if captcha_key == 'simple_math':
         # Simple math CAPTCHA verification
         correct_answer = request.session.get('simple_captcha')
-        if not correct_answer or captcha_value != correct_answer:
-            resp['msg'] = 'Incorrect answer. Please try again.'
-            return HttpResponse(json.dumps(resp), content_type="application/json")
-        # Clear the session
-        if 'simple_captcha' in request.session:
-            del request.session['simple_captcha']
+        if not correct_answer or not constant_time_compare(captcha_value, correct_answer):
+            return _reservation_verification_failure(
+                request,
+                'Incorrect answer. Please try again.',
+            )
+        request.session.pop('simple_captcha', None)
     else:
-        # Django CAPTCHA verification
         try:
             from captcha.models import CaptchaStore
+        except ImportError:
+            logger.exception("CAPTCHA package is unavailable")
+            return JsonResponse(
+                {'status': 'failed', 'msg': 'Security verification is temporarily unavailable.'},
+                status=503,
+            )
+        try:
             captcha = CaptchaStore.objects.get(hashkey=captcha_key)
-            if captcha.response.lower() != captcha_value.lower():
-                resp['msg'] = 'Security check failed. Please try again.'
-                return HttpResponse(json.dumps(resp), content_type="application/json")
-            # Remove used CAPTCHA
+            if not constant_time_compare(
+                captcha.response.casefold(),
+                captcha_value.casefold(),
+            ):
+                return _reservation_verification_failure(
+                    request,
+                    'Security check failed. Please try again.',
+                )
             captcha.delete()
         except CaptchaStore.DoesNotExist:
-            resp['msg'] = 'Invalid security check. Please refresh and try again.'
-            return HttpResponse(json.dumps(resp), content_type="application/json")
-        except Exception as e:
-            # Fallback to simple verification if CAPTCHA system fails
-            resp['msg'] = 'Security check system error. Please try again.'
-            return HttpResponse(json.dumps(resp), content_type="application/json")
-    
-    resp['status'] = 'success'
-    resp['msg'] = 'Verification successful.'
-    return HttpResponse(json.dumps(resp), content_type="application/json")
+            return _reservation_verification_failure(
+                request,
+                'Invalid security check. Please refresh and try again.',
+            )
+        except Exception:
+            logger.exception("CAPTCHA verification failed")
+            return JsonResponse(
+                {'status': 'failed', 'msg': 'Security verification is temporarily unavailable.'},
+                status=503,
+            )
+
+    request.session['reservation_verified_until'] = (
+        timezone.now().timestamp() + 180
+    )
+    request.session.pop('reservation_verify_attempts', None)
+    request.session.pop('reservation_verify_window', None)
+    return JsonResponse({'status': 'success', 'msg': 'Verification successful.'})
 
 
 def mark_notification_read(request):

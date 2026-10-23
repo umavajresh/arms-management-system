@@ -3,69 +3,121 @@
 
 {% block pageContent %}
 <style>
+    .ai-travel-launcher {
+        display: none;
+    }
+
     .chat-shell {
-        border: 1px solid rgba(143, 176, 255, 0.2) !important;
-        background: #0b1220;
+        border: 1px solid var(--arms-border);
+        background: var(--arms-surface);
+        border-radius: 6px;
     }
 
     .chat-shell .card-header {
-        background: #101a2b !important;
-        border-bottom: 1px solid rgba(143, 176, 255, 0.2) !important;
+        background: var(--arms-surface);
+        border-bottom: 1px solid var(--arms-border);
+        color: var(--arms-text);
     }
 
     .chat-body {
-        background: #e9eef5 !important;
+        background: var(--arms-page);
     }
 
     .chat-message {
-        color: #162235;
-        background: #ffffff;
-        border: 1px solid #d3dce8 !important;
+        color: var(--arms-text);
+        background: var(--arms-surface);
+        border: 1px solid var(--arms-border);
     }
 
     .chat-message.user-message {
         color: #ffffff;
-        background: #1769e0;
-        border-color: #1769e0 !important;
+        background: #315b6b;
+        border-color: #315b6b;
+    }
+
+    .chat-message a.chat-link {
+        color: inherit;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+
+    .chat-message.user-message a.chat-link {
+        color: #ffffff;
     }
 
     .chat-composer {
-        background: #101a2b !important;
-        border-top: 1px solid rgba(143, 176, 255, 0.2) !important;
+        background: var(--arms-surface);
+        border-top: 1px solid var(--arms-border);
     }
 
     .chat-composer .form-control {
-        color: #edf6ff;
-        background: #070d18;
+        color: var(--arms-text);
+        background: var(--arms-surface);
+        border-color: var(--arms-border);
     }
 
     .chat-composer .form-control::placeholder {
-        color: #91a1b8;
+        color: var(--arms-muted);
         opacity: 1;
+    }
+
+    .suggestion-chip {
+        cursor: pointer;
+        font-size: 0.8rem;
+        border: 1px solid var(--arms-border);
+        background: var(--arms-surface);
+        color: var(--arms-text);
+        border-radius: 4px;
+        padding: 0.25rem 0.5rem;
+        display: inline-block;
+        margin-right: 0.35rem;
+        margin-bottom: 0.35rem;
+        transition: border-color 0.15s ease;
+    }
+
+    .suggestion-chip:hover {
+        border-color: #315b6b;
+        background: #e9ecef;
     }
 </style>
 
 <div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-lg-10">
-            <div class="card chat-shell shadow border-0 rounded-4 overflow-hidden">
-                <div class="card-header bg-primary text-white py-3">
-                    <h3 class="mb-0"><i class="fas fa-robot me-2"></i>AI Travel Assistant</h3>
+            <div class="card chat-shell border overflow-hidden">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="h5 mb-0">
+                            <i class="fas fa-robot me-2 text-secondary" aria-hidden="true"></i>AI Travel Assistant
+                        </h1>
+                        <small class="text-muted">Instant travel recommendations, flight inquiries, and airline policies</small>
+                    </div>
+                    <div>
+                        <a href="{% url 'search-flight' %}" class="btn btn-outline-secondary btn-sm">Flight Search</a>
+                    </div>
                 </div>
                 <div class="card-body chat-body p-0">
-                    <div id="chat-window" class="p-3" style="min-height: 400px; max-height: 520px; overflow-y: auto;">
+                    <div id="chat-window" class="p-3" style="min-height: 420px; max-height: 520px; overflow-y: auto;">
                         <div class="d-flex justify-content-start mb-3">
-                            <div class="chat-message rounded-3 px-3 py-2 shadow-sm" style="max-width: 80%;">
-                                Hello! I can help with budget-friendly destinations, trip lengths, route ideas, and flight suggestions.
+                            <div class="chat-message rounded px-3 py-2" style="max-width: 80%;">
+                                Hello. I am your ARMS AI Travel Assistant. I can help you plan trips, find scheduled flights, check baggage and cancellation policies, or track flight statuses. How can I assist you today?
                             </div>
                         </div>
                     </div>
-                    <div class="chat-composer border-top p-3">
+                    <div class="chat-composer p-3">
+                        <div class="mb-2" id="suggestion-chips">
+                            <span class="text-muted small me-2">Suggested queries:</span>
+                            <button type="button" class="suggestion-chip">What is the baggage allowance?</button>
+                            <button type="button" class="suggestion-chip">Flights from Chennai</button>
+                            <button type="button" class="suggestion-chip">Cancellation policy</button>
+                            <button type="button" class="suggestion-chip">Airport check-in times</button>
+                            <button type="button" class="suggestion-chip">Plan a 3-day trip to Goa under ₹15,000</button>
+                        </div>
                         <form id="chat-form">
                             {% csrf_token %}
                             <div class="input-group">
-                                <input type="text" id="chat-message" class="form-control form-control-lg" placeholder="Ask: Where should I travel this month? or My budget is ₹12,000 for 3 days..." autocomplete="off" required>
-                                <button type="submit" class="btn btn-primary btn-lg">Send</button>
+                                <input type="text" id="chat-message" class="form-control" placeholder="Ask: What flights are available from Chennai? or What is the baggage allowance?..." autocomplete="off" required>
+                                <button type="submit" class="btn btn-primary" id="chat-submit-btn">Send</button>
                             </div>
                         </form>
                     </div>
@@ -82,28 +134,47 @@
     const chatWindow = document.getElementById('chat-window');
     const chatForm = document.getElementById('chat-form');
     const chatInput = document.getElementById('chat-message');
+    const submitBtn = document.getElementById('chat-submit-btn');
+
+    function formatMessageContent(content) {
+        // Safe escaping to prevent XSS
+        const div = document.createElement('div');
+        div.textContent = content;
+        let escaped = div.innerHTML;
+
+        // Convert markdown links [Label](/url) safely to internal links
+        escaped = escaped.replace(/\[([^\]]+)\]\(((\/[a-zA-Z0-9_\-\/?=&]+))\)/g, function(match, label, url) {
+            return '<a href="' + url + '" class="chat-link" target="_self">' + label + ' &rarr;</a>';
+        });
+
+        return escaped;
+    }
 
     function addMessage(content, isUser = false) {
         const wrapper = document.createElement('div');
         wrapper.className = `d-flex mb-3 ${isUser ? 'justify-content-end' : 'justify-content-start'}`;
 
         const bubble = document.createElement('div');
-        bubble.className = `chat-message rounded-3 px-3 py-2 shadow-sm ${isUser ? 'user-message' : ''}`;
-        bubble.style.maxWidth = '80%';
+        bubble.className = `chat-message rounded px-3 py-2 ${isUser ? 'user-message' : ''}`;
+        bubble.style.maxWidth = '85%';
         bubble.style.whiteSpace = 'pre-line';
-        bubble.textContent = content;
+
+        if (isUser) {
+            bubble.textContent = content;
+        } else {
+            bubble.innerHTML = formatMessageContent(content);
+        }
+
         wrapper.appendChild(bubble);
         chatWindow.appendChild(wrapper);
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 
-    chatForm.addEventListener('submit', function(event) {
-        event.preventDefault();
-        const message = chatInput.value.trim();
-        if (!message) return;
-
-        addMessage(message, true);
+    function sendMessage(text) {
+        if (!text) return;
+        addMessage(text, true);
         chatInput.value = '';
+        submitBtn.disabled = true;
 
         fetch('{% url "travel-chat-api" %}', {
             method: 'POST',
@@ -111,10 +182,11 @@
                 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
                 'X-CSRFToken': '{{ csrf_token }}'
             },
-            body: new URLSearchParams({ message: message })
+            body: new URLSearchParams({ message: text })
         })
         .then(response => response.json())
         .then(data => {
+            submitBtn.disabled = false;
             if (data.status === 'success') {
                 addMessage(data.response, false);
             } else {
@@ -122,7 +194,19 @@
             }
         })
         .catch(() => {
-            addMessage('I could not process that request right now. Please try again.', false);
+            submitBtn.disabled = false;
+            addMessage('I could not process that request right now. Please check your connection and try again.', false);
+        });
+    }
+
+    chatForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        sendMessage(chatInput.value.trim());
+    });
+
+    document.querySelectorAll('.suggestion-chip').forEach(function(chip) {
+        chip.addEventListener('click', function() {
+            sendMessage(this.textContent.trim());
         });
     });
 })();

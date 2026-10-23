@@ -2,49 +2,96 @@
 {% load static %}
 
 {% block pageContent %}
+<style>
+    .landing-shell {
+        max-width: 900px;
+        margin: 0 auto;
+        border: 1px solid var(--arms-border);
+        border-radius: 8px;
+        background: var(--arms-surface);
+    }
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-lg">
-                <div class="card-header bg-primary text-white text-center">
-                    <h1>Welcome to Airline Reservation Management System</h1>
-                    <p class="mb-0">Please choose how you would like to continue</p>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <div class="card h-100 border-0 shadow">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-user-shield fa-5x mb-3 text-primary"></i>
-                                    <h3>Admin</h3>
-                                    <p>Login to manage airlines, airports, flights, and reservations</p>
-                                    <a href="{% url 'login-page' %}?type=admin" class="btn btn-primary btn-lg w-100">
-                                        Enter as Admin
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <div class="card h-100 border-0 shadow">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-user fa-5x mb-3 text-success"></i>
-                                    <h3>User</h3>
-                                    <p>Search flights, make reservations, and manage your bookings</p>
-                                    <a href="{% url 'login-page' %}?type=user" class="btn btn-success btn-lg w-100">
-                                        Enter as User
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer text-center">
-                    <p>Don't have an account? <a href="{% url 'register-page' %}">Register here</a></p>
-                </div>
-            </div>
+    .landing-intro {
+        padding: clamp(1.5rem, 4vw, 3rem);
+        border-bottom: 1px solid var(--arms-border);
+    }
+
+    .landing-intro p,
+    .landing-option p {
+        color: var(--arms-muted);
+    }
+
+    .landing-options {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .landing-option {
+        padding: clamp(1.5rem, 4vw, 2.5rem);
+    }
+
+    .landing-option + .landing-option {
+        border-left: 1px solid var(--arms-border);
+    }
+
+    .landing-option h2 {
+        font-size: 1.25rem;
+    }
+
+    .landing-action {
+        display: inline-block;
+        padding: 0.7rem 1rem;
+        border: 1px solid #315b6b;
+        border-radius: 5px;
+        color: #fff;
+        background: #315b6b;
+        text-decoration: none;
+    }
+
+    .landing-action:hover {
+        color: #fff;
+        background: #274956;
+        border-color: #274956;
+    }
+
+    .landing-footer {
+        padding: 1rem clamp(1.5rem, 4vw, 3rem);
+        border-top: 1px solid var(--arms-border);
+    }
+
+    @media (max-width: 575px) {
+        .landing-options {
+            grid-template-columns: 1fr;
+        }
+
+        .landing-option + .landing-option {
+            border-top: 1px solid var(--arms-border);
+            border-left: 0;
+        }
+    }
+</style>
+
+<section class="container py-5">
+    <div class="landing-shell">
+        <header class="landing-intro">
+            <h1 class="h2 mb-2">Airline Reservation Management System</h1>
+            <p class="mb-0">Choose a secure sign-in to continue.</p>
+        </header>
+        <div class="landing-options">
+            <section class="landing-option" aria-labelledby="admin-entry-title">
+                <h2 id="admin-entry-title">Administration</h2>
+                <p>Manage airlines, airports, aircraft, flights, and reservation requests.</p>
+                <a href="{% url 'login-page' %}?type=admin" class="landing-action">Sign in as administrator</a>
+            </section>
+            <section class="landing-option" aria-labelledby="passenger-entry-title">
+                <h2 id="passenger-entry-title">Passenger services</h2>
+                <p>Search for flights, request seats, and manage your reservations.</p>
+                <a href="{% url 'login-page' %}?type=user" class="landing-action">Sign in as passenger</a>
+            </section>
         </div>
+        <footer class="landing-footer">
+            <p class="mb-0">New passenger? <a href="{% url 'register-page' %}">Create an account</a></p>
+        </footer>
     </div>
-</div>
-
+</section>
 {% endblock pageContent %}

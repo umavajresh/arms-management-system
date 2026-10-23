@@ -78,7 +78,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="card rounded-0 shadow">
+                <div class="card rounded-0">
                     <div class="card-body">
                         <div class="container-fluid">
                             <div class="alert alert-info mb-3">
@@ -151,7 +151,7 @@
                                 </div>
 
                                 <div class="text-center mb-3">
-                                    <button type="button" class="btn btn-primary bg-gradient-dark btn-lg rounded-pill w-100" data-bs-toggle="modal" data-bs-target="#verificationModal">Submit Reservation</button>
+                                    <button type="button" class="btn btn-primary btn-lg w-100" data-bs-toggle="modal" data-bs-target="#verificationModal">Submit Reservation</button>
                                 </div>
                             </form>
                         </div>
@@ -199,6 +199,8 @@
         </div>
     </div>
 </div>
+
+{{ reservation_payload|json_script:"reservation-payload" }}
 
 {% endblock pageContent %}
 
@@ -342,23 +344,11 @@
 
         // Generate passenger forms based on selected seats
         function generatePassengerForms() {
-            // Get multi-passenger data from Django context
-            let passengerCount = {{ passenger_count|default:1 }};
-            let selectedSeats = [];
-            let isMultiPassenger = {{ is_multi_passenger|yesno:"true,false" }};
-
-            {% if is_multi_passenger and selected_seats %}
-            selectedSeats = {{ selected_seats|safe }};
-            {% elif selected_seat %}
-            // Legacy single passenger
-            selectedSeats = [{
-                seat: '{{ selected_seat }}',
-                type: '{{ selected_type }}',
-                class: '{{ seat_class }}',
-                display_class: '{{ seat_class }}',
-                price: {{ seat_price|default:0 }}
-            }];
-            {% endif %}
+            const payloadElement = document.getElementById('reservation-payload');
+            let reservationPayload = payloadElement ? JSON.parse(payloadElement.textContent) : null;
+            let passengerCount = (reservationPayload && reservationPayload.passenger_count) || {{ passenger_count|default:1 }};
+            let selectedSeats = (reservationPayload && reservationPayload.selected_seats) || [];
+            let isMultiPassenger = Boolean(reservationPayload && reservationPayload.is_multi_passenger);
 
             console.log('Passenger data:', { passengerCount, selectedSeats, isMultiPassenger });
 

@@ -1,7 +1,12 @@
 from django.utils.deprecation import MiddlewareMixin
 from django.shortcuts import redirect
 from django.contrib import messages
-from django.urls import resolve
+from django.contrib.auth.views import redirect_to_login
+from django.urls import Resolver404, resolve
+from django.http import HttpResponseServerError
+import logging
+
+logger = logging.getLogger(__name__)
 
 class UserProfileMiddleware(MiddlewareMixin):
     """
@@ -12,10 +17,13 @@ class UserProfileMiddleware(MiddlewareMixin):
     # Admin-only URLs
     ADMIN_URLS = [
         'home-page', 'airline-page', 'airport-page', 'flight-page', 'reservation',
-        'manage-airline', 'manage-airport', 'manage-flight', 'view-flight-pk',
+        'manage-airline', 'manage-airline-pk', 'manage-airport', 'manage-airport-pk',
+        'manage-flight', 'manage-flight-pk', 'view-flight-pk',
         'save-airline', 'save-airport', 'save-flight',
         'delete-airline-pk', 'delete-airport-pk', 'delete-flight-pk',
-        'view-reservation-pk', 'delete-reservation-pk', 'update-reservation'
+        'view-reservation-pk', 'delete-reservation-pk', 'update-reservation',
+        'aircraft-page', 'manage-aircraft', 'manage-aircraft-pk',
+        'save-aircraft', 'delete-aircraft-pk',
     ]
     
     # User-only URLs
@@ -30,44 +38,30 @@ class UserProfileMiddleware(MiddlewareMixin):
         'public-page', 'profile-page', 'update-password', 'update-profile',
         'logout'
     ]
+    PROTECTED_URLS = ADMIN_URLS + [
+        name for name in USER_URLS if name != 'save-reservation'
+    ] + [name for name in COMMON_URLS if name != 'public-page']
     
     def process_view(self, request, view_func, view_args, view_kwargs):
-        # Skip middleware for anonymous users or login/registration URLs
-        if not request.user.is_authenticated or 'login' in request.path or 'register' in request.path:
+        if request.path.startswith(('/admin/', '/static/', '/media/')):
             return None
-            
-        # Skip for Django admin URLs
-        if request.path.startswith('/admin/'):
-            return None
-            
-        # Skip for static files
-        if request.path.startswith('/static/') or request.path.startswith('/media/'):
-            return None
-        
-        # Try to get the current URL name
+
         try:
             url_name = resolve(request.path_info).url_name
-        except:
-            url_name = None
-            
+        except Resolver404:
+            return None
+
+        if not request.user.is_authenticated:
+            if url_name in self.PROTECTED_URLS:
+                return redirect_to_login(request.get_full_path())
+            return None
+
         # Check if user has a profile
+        from armsApp.models import UserProfile
+
         try:
             profile = request.user.profile
-            # Both is_admin flag and user_type are available, but we prefer using user_type
-            
-            # If admin tries to access user-only pages
-            if profile.user_type == 'admin' and url_name in self.USER_URLS:
-                messages.warning(request, "That page is for regular users only. Redirected to admin dashboard.")
-                return redirect('home-page')
-                
-            # If regular user tries to access admin-only pages
-            if profile.user_type == 'user' and url_name in self.ADMIN_URLS:
-                messages.warning(request, "That page requires administrative privileges. Redirected to user dashboard.")
-                return redirect('user-dashboard')
-                
-        except Exception:
-            # Create a default profile if none exists
-            from armsApp.models import UserProfile
+        except UserProfile.DoesNotExist:
             try:
                 profile = UserProfile.objects.create(
                     user=request.user,
@@ -76,11 +70,29 @@ class UserProfileMiddleware(MiddlewareMixin):
                     is_admin=False,
                     user_type='user'  # Default to regular user
                 )
-                # New users should be directed to the user dashboard
                 if url_name in self.ADMIN_URLS:
                     messages.info(request, "Your account has been set up as a regular user.")
                     return redirect('user-dashboard')
             except Exception as e:
-                messages.error(request, f"Error creating user profile: {str(e)}")
+                logger.exception("Unable to create a profile for authenticated user %s", request.user.pk)
+                return HttpResponseServerError("Your account could not be verified. Please try again.")
+        except Exception:
+            logger.exception("Unable to load profile for authenticated user %s", request.user.pk)
+            return HttpResponseServerError("Your account could not be verified. Please try again.")
+
+        if profile.user_type not in {'admin', 'user'}:
+            logger.error(
+                "Invalid user profile role for authenticated user %s",
+                request.user.pk,
+            )
+            return HttpResponseServerError("Your account could not be verified. Please contact support.")
+
+        if profile.user_type == 'admin' and url_name in self.USER_URLS:
+            messages.warning(request, "That page is for regular users only. Redirected to admin dashboard.")
+            return redirect('home-page')
+
+        if profile.user_type == 'user' and url_name in self.ADMIN_URLS:
+            messages.warning(request, "That page requires administrative privileges. Redirected to user dashboard.")
+            return redirect('user-dashboard')
                 
         return None

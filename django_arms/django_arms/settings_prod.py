@@ -5,12 +5,18 @@ from django.core.exceptions import ImproperlyConfigured
 
 from .settings import *
 
-SECRET_KEY = os.environ.get('SECRET_KEY', SECRET_KEY)
 DEBUG = os.environ.get('DEBUG', 'False').lower() in ('1', 'true', 'yes')
+secret_key = os.environ.get('SECRET_KEY')
+if secret_key:
+    SECRET_KEY = secret_key
+elif not DEBUG:
+    raise ImproperlyConfigured('SECRET_KEY must be set when DEBUG is False.')
 
 allowed_hosts = os.environ.get('ALLOWED_HOSTS')
 if allowed_hosts:
     ALLOWED_HOSTS = [host.strip() for host in allowed_hosts.split(',') if host.strip()]
+elif not DEBUG:
+    raise ImproperlyConfigured('ALLOWED_HOSTS must be set when DEBUG is False.')
 
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
@@ -21,5 +27,16 @@ elif not DEBUG:
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '31536000' if not DEBUG else '0'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = (
+    os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'False').lower()
+    in ('1', 'true', 'yes')
+)
+SECURE_HSTS_PRELOAD = (
+    os.environ.get('SECURE_HSTS_PRELOAD', 'False').lower()
+    in ('1', 'true', 'yes')
+)
+SECURE_REFERRER_POLICY = 'same-origin'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'

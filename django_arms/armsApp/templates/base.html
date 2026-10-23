@@ -26,6 +26,15 @@
     <script src="{% static 'assets/bootstrap/js/bootstrap.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'assets/default/js/script.js' %}"></script>
     <style>
+        :root {
+            --arms-page: #f1f3f0;
+            --arms-surface: #f8f9f6;
+            --arms-border: #d4dad6;
+            --arms-text: #263238;
+            --arms-primary: #315b6b;
+            --arms-primary-hover: #274956;
+        }
+
         .modal-sub-footer {
             display: flex;
             flex-wrap: wrap;
@@ -50,6 +59,39 @@
             object-position: center center;
             transition: all .2s ease-in-out;
         }
+
+        .ai-travel-launcher {
+            position: fixed;
+            right: 1.25rem;
+            bottom: 1.25rem;
+            z-index: 1040;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            padding: 0.75rem 1rem;
+            color: #fff;
+            background: #315b6b;
+            border: 1px solid #315b6b;
+            border-radius: 6px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .ai-travel-launcher:hover,
+        .ai-travel-launcher:focus {
+            color: #fff;
+            background: #274956;
+            border-color: #274956;
+        }
+
+        @media (max-width: 575px) {
+            .ai-travel-launcher {
+                right: 0.75rem;
+                bottom: 0.75rem;
+                padding: 0.7rem 0.85rem;
+                font-size: 0.9rem;
+            }
+        }
     </style>
     {% block headerContent %} {% endblock headerContent %}
 </head>
@@ -64,7 +106,7 @@
                     {% for message in messages %}
                     <div class="alert alert-{% if message.extra_tags %}{{ message.tags|replaceBlank:message.extra_tags|replaceBlank:' ' }}{% else %}{{ message.tags }}{% endif %} w-100 rounded-0 mb-2 redirect-msg">
                         <div class="d-flex w-100">
-                            <div class="col-auto flex-shrink-1 flex-grow-1">{{ message|safe }}</div>
+                            <div class="col-auto flex-shrink-1 flex-grow-1">{{ message }}</div>
                             <div class="col-auto text-center">
                                 <button class="btn-close btn-sm text-sm" type="button" onclick="$(this).closest('.alert').remove()"></button>
                             </div>
@@ -91,6 +133,10 @@
 
         </div>
     </main>
+    <a class="ai-travel-launcher" href="{% url 'travel-chat' %}" aria-label="Open AI Travel Agent">
+        <i class="fas fa-robot" aria-hidden="true"></i>
+        <span>AI Travel Agent</span>
+    </a>
     {% block ScriptBlock %} {% endblock ScriptBlock %}
     <div class="modal fade" id="uni_modal" role='dialog'>
         <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable" role="document">
@@ -101,7 +147,7 @@
                 <div class="modal-body">
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn  btn-sm btn-flat btn-primary rounded-0" id='submit' onclick="$('#uni_modal form').submit()">Save</button>
+                    <button type="button" class="btn btn-sm btn-flat btn-primary rounded-0" id='submit' onclick="$('#uni_modal form').submit()">Save</button>
                     <button type="button" class="btn btn-sm btn-flat btn-light border rounded-0" data-bs-dismiss="modal">Cancel</button>
                 </div>
                 <div class="modal-sub-footer">
@@ -138,9 +184,9 @@
                     </div>
                     <div class="w-25 d-flex justify-content-center pt-3">
                         <div class="input-group mb-3">
-                            <button class="btn btn-dark bg-gradient btn-sm text-light" type="button" id="zoom-minus"><i class="fa fa-minus"></i></button>
-                            <input type="text" id="zoom-value" class="form-control form-control-sm rounded-0 w-25 bg-dark bg-gradient border-dark text-light text-center" value="100" placeholder="" aria-label="Example text with button addon" aria-describedby="button-addon1" readonly>
-                            <button class="btn btn-dark bg-gradient btn-sm text-light" type="button" id="zoom-plus"><i class="fa fa-plus"></i></button>
+                            <button class="btn btn-dark btn-sm text-light" type="button" id="zoom-minus"><i class="fa fa-minus"></i></button>
+                            <input type="text" id="zoom-value" class="form-control form-control-sm rounded-0 w-25 bg-dark border-dark text-light text-center" value="100" placeholder="" aria-label="Example text with button addon" aria-describedby="button-addon1" readonly>
+                            <button class="btn btn-dark btn-sm text-light" type="button" id="zoom-plus"><i class="fa fa-plus"></i></button>
                         </div>
                     </div>
                 </div>
@@ -188,7 +234,8 @@
     <script>
         const loader = $('<div>')
         loader.attr('id', 'pre-loader')
-        loader.html('<div class="lds-default"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>')
+        loader.attr({role: 'status', 'aria-live': 'polite'})
+        loader.text('Processing, please wait.')
 
         window.start_loader = function() {
             $('body').removeClass('loading')
@@ -207,8 +254,18 @@
             $.ajax({
                 url: $url,
                 error: err => {
-                    console.log()
-                    alert("An error occured")
+                    let message = 'An error occurred while loading the requested content. Please try again.';
+                    if (err && err.responseJSON && err.responseJSON.msg) {
+                        message = err.responseJSON.msg;
+                    } else if (err && err.responseText) {
+                        try {
+                            const parsed = JSON.parse(err.responseText);
+                            if (parsed && parsed.msg) message = parsed.msg;
+                        } catch (e) {
+                            message = err.responseText;
+                        }
+                    }
+                    alert(message);
                 },
                 success: function(resp) {
                     if (resp) {
