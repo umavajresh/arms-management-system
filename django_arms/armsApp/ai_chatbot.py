@@ -335,16 +335,11 @@ DESTINATION_DIRECTORY['denpasar'] = DESTINATION_DIRECTORY['bali']
 DESTINATION_DIRECTORY['maldives'] = DESTINATION_DIRECTORY['male']
 
 
-def extract_destination_name(message):
+def extract_destination_name(message, origin=None):
     text = (message or '').strip()
     lower = text.lower()
 
-    # 1. Match known directory items first
-    for key, data in DESTINATION_DIRECTORY.items():
-        if re.search(rf'\b{re.escape(key)}\b', lower):
-            return data['name']
-
-    # 2. Extract destination following travel verbs or prepositions
+    # 1. Extract destination following travel verbs or prepositions (e.g. "plan a trip to Kadapa", "to Bangkok")
     patterns = [
         r'\b(?:plan a trip to|plan trip to|trip to|travel to|visit|explore|vacation in|holiday in|flights? to|going to|go to)\s+([a-zA-Z\s\'-]+?)(?=\s+(?:under|for|with|during|in|from|budget|next|this|on|and|near)\b|[,.;!?]|$)',
         r'\bto\s+([a-zA-Z\s\'-]+?)(?=\s+(?:under|for|with|during|in|from|budget|next|this|on)\b|[,.;!?]|$)',
@@ -357,7 +352,15 @@ def extract_destination_name(message):
             if words:
                 candidate_str = ' '.join(words).title()
                 if candidate_str.lower() not in ('here', 'there', 'somewhere', 'anywhere'):
-                    return candidate_str
+                    if not origin or candidate_str.lower() != origin.lower():
+                        return candidate_str
+
+    # 2. Match known directory items (excluding origin)
+    for key, data in DESTINATION_DIRECTORY.items():
+        if origin and key.lower() == origin.lower():
+            continue
+        if re.search(rf'\b{re.escape(key)}\b', lower):
+            return data['name']
 
     return None
 
@@ -477,7 +480,7 @@ def extract_travel_preferences(message):
             origin = 'Chennai'
 
     # Extract destination
-    destination = extract_destination_name(text)
+    destination = extract_destination_name(text, origin=origin)
 
     trip_type = 'domestic'
     if any(k in lower_text for k in ['international', 'abroad', 'overseas', 'foreign trip', 'foreign travel']):
@@ -485,6 +488,11 @@ def extract_travel_preferences(message):
     elif destination:
         dest_data = DESTINATION_DIRECTORY.get(destination.lower())
         if dest_data and dest_data.get('type') == 'international':
+            trip_type = 'international'
+        elif destination in {
+            'Dubai', 'Bangkok', 'Singapore', 'Bali', 'Paris', 'London', 'Tokyo',
+            'Kuala Lumpur', 'Colombo', 'Kathmandu', 'Male', 'New York', 'Sydney', 'Rome', 'Zurich'
+        }:
             trip_type = 'international'
 
     month = None
