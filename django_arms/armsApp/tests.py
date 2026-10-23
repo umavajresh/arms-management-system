@@ -9,6 +9,7 @@ from django.test import Client, SimpleTestCase, TestCase
 from django.utils import timezone
 from django.urls import reverse
 
+from armsApp import models
 from armsApp.models import Aircraft, Airport, Airlines, Flights, Reservation, UserProfile
 from armsApp.views import _fetch_live_flight_data
 
@@ -1001,4 +1002,215 @@ class TwoFactorAuthenticationTests(TestCase):
         self.assertRedirects(response, reverse('verify-2fa'))
         self.profile.refresh_from_db()
         self.assertIsNotNone(self.profile.otp_code)
+
+
+class GuestReservationFlowTests(TestCase):
+    def setUp(self):
+        self.airline = models.Airlines.objects.create(name='Global Airways')
+        self.airport_a = models.Airport.objects.create(code='AAA', name='Alpha Airport')
+        self.airport_b = models.Airport.objects.create(code='BBB', name='Beta Airport')
+        self.aircraft = models.Aircraft.objects.create(
+            code='AC01', model='Airbus A320', manufacturer='Airbus', business_capacity=4, economy_capacity=10
+        )
+        self.flight = models.Flights.objects.create(
+            code='GL100',
+            airline=self.airline,
+            from_airport=self.airport_a,
+            to_airport=self.airport_b,
+            aircraft=self.aircraft,
+            departure=timezone.now() + timezone.timedelta(days=2),
+            estimated_arrival=timezone.now() + timezone.timedelta(days=2, hours=4),
+            business_class_price=800,
+            economy_price=200,
+        )
+
+    def test_guest_booking_success_and_reference_generation(self):
+        session = self.client.session
+        session['selected_flight'] = str(self.flight.id)
+        session['selected_seats_data'] = json.dumps({
+            'passenger_count': 1,
+            'is_multi_passenger': True,
+            'seats': [{'seat': 'E1A', 'type': '2', 'class': 'economy'}]
+        })
+        session.save()
+
+        response = self.client.post(reverse('save-reservation'), {
+            'flight': str(self.flight.id),
+            'passenger_count': 1,
+            'passenger_0_first_name': 'Jane',
+            'passenger_0_last_name': 'Doe',
+            'passenger_0_gender': 'Female',
+            'passenger_0_seat': 'E1A',
+            'passenger_0_type': '2',
+            'email': 'jane.doe@example.com',
+            'contact': '555-1234',
+            'is_guest': '1',
+        })
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data.get('status'), 'success')
+        self.assertTrue(data.get('is_guest'))
+        ref = data.get('booking_reference')
+        self.assertIsNotNone(ref)
+        self.assertTrue(ref.startswith('GUEST-'))
+
+        res = models.Reservation.objects.get(booking_reference=ref)
+        self.assertIsNone(res.user)
+        self.assertTrue(res.is_guest)
+        self.assertEqual(res.first_name, 'Jane')
+        self.assertEqual(res.seat_number, 'E1A')
+
+        conf_response = self.client.get(reverse('booking-confirmation', kwargs={'reference': ref}))
+        self.assertEqual(conf_response.status_code, 200)
+        self.assertContains(conf_response, ref)
+        self.assertContains(conf_response, 'Jane')
+
+    def test_guest_lookup_and_verification(self):
+        res = models.Reservation.objects.create(
+            flight=self.flight,
+            user=None,
+            is_guest=True,
+            first_name='Alex',
+            last_name='Morgan',
+            gender='Female',
+            email='alex.morgan@example.com',
+            contact='555-9876',
+            seat_number='E1B',
+            type='2',
+        )
+        ref = res.booking_reference
+        self.assertIsNotNone(ref)
+
+        resp_email = self.client.post(reverse('guest-booking'), {
+            'reference': ref,
+            'verification': 'alex.morgan@example.com'
+        })
+        self.assertEqual(resp_email.status_code, 200)
+        self.assertContains(resp_email, 'Alex Morgan')
+        self.assertContains(resp_email, ref)
+
+        resp_lname = self.client.post(reverse('guest-booking'), {
+            'reference': ref,
+            'verification': 'Morgan'
+        })
+        self.assertEqual(resp_lname.status_code, 200)
+        self.assertContains(resp_lname, 'Alex Morgan')
+
+        resp_fail = self.client.post(reverse('guest-booking'), {
+            'reference': ref,
+            'verification': 'wrong.person@example.com'
+        })
+        self.assertEqual(resp_fail.status_code, 200)
+        self.assertContains(resp_fail, 'No reservation found matching')
+
+    def test_cancel_guest_reservation(self):
+        res = models.Reservation.objects.create(
+            flight=self.flight,
+            user=None,
+            is_guest=True,
+            first_name='Robert',
+            last_name='Paulson',
+            gender='Male',
+            email='robert@example.com',
+            contact='555-4321',
+            seat_number='E1C',
+            type='2',
+            status='0',
+        )
+        ref = res.booking_reference
+
+        resp_fail = self.client.post(reverse('cancel-guest-reservation'), {
+            'reference': ref,
+            'verification': 'hacker@example.com'
+        })
+        self.assertEqual(resp_fail.status_code, 403)
+
+        resp_success = self.client.post(reverse('cancel-guest-reservation'), {
+            'reference': ref,
+            'verification': 'robert@example.com'
+        })
+        self.assertEqual(resp_success.status_code, 200)
+        res.refresh_from_db()
+        self.assertEqual(res.status, '2')
+
+
+class LegalPagesTests(SimpleTestCase):
+    def test_terms_of_service_page(self):
+        response = self.client.get(reverse('terms'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Terms of Service")
+        self.assertContains(response, "ARMS 2.0")
+
+    def test_privacy_policy_page(self):
+        response = self.client.get(reverse('privacy'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Privacy Policy")
+        self.assertContains(response, "Data Minimization")
+
+
+class UserTravelPreferencesTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='globetrotter',
+            email='globe@example.com',
+            password='Password123!'
+        )
+
+    def test_update_travel_preferences(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse('update-travel-preferences'), {
+            'preferred_language': 'es',
+            'preferred_currency': 'EUR',
+            'preferred_seat_class': 'Business',
+            'dietary_preference': 'Vegetarian',
+            'interests': 'art, architecture',
+            'budget_level': 'luxury',
+        })
+        self.assertRedirects(response, reverse('profile-page'))
+        pref = self.user.travel_preference
+        self.assertEqual(pref.preferred_language, 'es')
+        self.assertEqual(pref.preferred_currency, 'EUR')
+        self.assertEqual(pref.preferred_seat_class, 'Business')
+        self.assertEqual(pref.dietary_preference, 'Vegetarian')
+
+
+class MultilingualAndToolChatbotTests(TestCase):
+    def setUp(self):
+        self.airline = models.Airlines.objects.create(name='Skyline Air')
+        self.airport_a = models.Airport.objects.create(code='MAA', name='Chennai')
+        self.airport_b = models.Airport.objects.create(code='DXB', name='Dubai')
+        self.aircraft = models.Aircraft.objects.create(
+            code='AC99', model='Boeing 737', manufacturer='Boeing', business_capacity=2, economy_capacity=5
+        )
+        self.flight = models.Flights.objects.create(
+            code='SK101',
+            airline=self.airline,
+            from_airport=self.airport_a,
+            to_airport=self.airport_b,
+            aircraft=self.aircraft,
+            departure=timezone.now() + timezone.timedelta(days=1),
+            estimated_arrival=timezone.now() + timezone.timedelta(days=1, hours=4),
+            business_class_price=600,
+            economy_price=250,
+        )
+
+    def test_multilingual_spanish_faq(self):
+        response = get_travel_response("¿Cuál es la política de equipaje?", language='es')
+        self.assertIn("Política de equipaje", response)
+        self.assertIn("7 kg", response)
+
+    def test_execute_travel_tool_search_flights(self):
+        from armsApp.ai_chatbot import execute_travel_tool
+        result = execute_travel_tool('search_flights', {'origin': 'Chennai', 'destination': 'Dubai'})
+        self.assertIsInstance(result, list)
+        self.assertGreaterEqual(len(result), 1)
+        self.assertEqual(result[0]['code'], 'SK101')
+
+    def test_execute_travel_tool_flight_details(self):
+        from armsApp.ai_chatbot import execute_travel_tool
+        result = execute_travel_tool('get_flight_details', {'code': 'SK101'})
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result['code'], 'SK101')
+        self.assertEqual(result['airline'], 'Skyline Air')
+
 

@@ -27,12 +27,31 @@
     <script type="text/javascript" src="{% static 'assets/default/js/script.js' %}"></script>
     <style>
         :root {
-            --arms-page: #f1f3f0;
-            --arms-surface: #f8f9f6;
-            --arms-border: #d4dad6;
-            --arms-text: #263238;
+            --arms-bg: #0b0f17;
+            --arms-surface: #131924;
+            --arms-card: #182230;
+            --arms-border: #263345;
+            --arms-text: #e2e8f0;
+            --arms-muted: #8b9bb0;
+            --arms-gold: #c5a880;
+            --arms-gold-hover: #b3956e;
+            --arms-page: #0b0f17;
             --arms-primary: #315b6b;
             --arms-primary-hover: #274956;
+        }
+
+        body {
+            background-color: var(--arms-bg, #0b0f17);
+            color: var(--arms-text, #e2e8f0);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+        }
+
+        main {
+            flex: 1 0 auto;
         }
 
         .modal-sub-footer {
@@ -42,7 +61,7 @@
             align-items: center;
             justify-content: flex-end;
             padding: 0.75rem;
-            border-top: 1px solid #dee2e6;
+            border-top: 1px solid #263345;
             border-bottom-right-radius: calc(0.3rem - 1px);
             border-bottom-left-radius: calc(0.3rem - 1px);
         }
@@ -69,19 +88,20 @@
             align-items: center;
             gap: 0.55rem;
             padding: 0.75rem 1rem;
-            color: #fff;
-            background: #315b6b;
-            border: 1px solid #315b6b;
-            border-radius: 6px;
+            color: #0b0f17;
+            background: var(--arms-gold, #c5a880);
+            border: 1px solid var(--arms-gold, #c5a880);
+            border-radius: 4px;
             font-weight: 600;
             text-decoration: none;
+            box-shadow: none;
         }
 
         .ai-travel-launcher:hover,
         .ai-travel-launcher:focus {
-            color: #fff;
-            background: #274956;
-            border-color: #274956;
+            color: #0b0f17;
+            background: var(--arms-gold-hover, #b3956e);
+            border-color: var(--arms-gold-hover, #b3956e);
         }
 
         @media (max-width: 575px) {
@@ -133,6 +153,51 @@
 
         </div>
     </main>
+
+    {% if footer != False %}
+    <!-- Global Footer -->
+    <footer class="arms-footer py-4 border-top" style="background-color: var(--arms-surface, #131924); border-color: var(--arms-border, #263345) !important;">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-4 col-md-6 col-12">
+                    <div class="fw-bold mb-2" style="color: var(--arms-gold, #c5a880); font-size: 1.15rem;">ARMS 2.0</div>
+                    <p class="small text-muted mb-0">Intelligent Airline Reservation and Cinematic Travel Management. Powered by conversational AI, live tracking intelligence, and verified airline inventory.</p>
+                </div>
+                <div class="col-lg-2 col-md-3 col-6">
+                    <div class="small fw-semibold text-light mb-2">Travel Services</div>
+                    <ul class="list-unstyled small mb-0">
+                        <li class="mb-1"><a href="{% url 'search-flight' %}" class="text-secondary text-decoration-none">Search Flights</a></li>
+                        <li class="mb-1"><a href="{% url 'flight-tracker' %}" class="text-secondary text-decoration-none">Live Flight Radar</a></li>
+                        <li class="mb-1"><a href="{% url 'travel-chat' %}" class="text-secondary text-decoration-none">AI Travel Agent</a></li>
+                        <li class="mb-1"><a href="{% url 'guest-booking' %}" class="text-secondary text-decoration-none">Guest Lookup</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-3 col-6">
+                    <div class="small fw-semibold text-light mb-2">Account</div>
+                    <ul class="list-unstyled small mb-0">
+                        <li class="mb-1"><a href="{% url 'login-page' %}" class="text-secondary text-decoration-none">Sign In</a></li>
+                        <li class="mb-1"><a href="{% url 'register-page' %}" class="text-secondary text-decoration-none">Register</a></li>
+                        <li class="mb-1"><a href="{% url 'forgot-password' %}" class="text-secondary text-decoration-none">Forgot Password</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-12 col-12">
+                    <div class="small fw-semibold text-light mb-2">Legal and Compliance</div>
+                    <p class="small text-muted mb-2">Bookings made through ARMS are subject to airline carriage conditions, security screenings, and fare rules.</p>
+                    <div class="d-flex gap-3 small">
+                        <a href="{% url 'terms' %}" class="text-secondary text-decoration-none">Terms of Service</a>
+                        <span class="text-muted">|</span>
+                        <a href="{% url 'privacy' %}" class="text-secondary text-decoration-none">Privacy Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center pt-3 mt-3 border-top border-secondary border-opacity-25 small text-muted">
+                <div>&copy; 2026 Airline Reservation Management System (ARMS). All rights reserved.</div>
+                <div>System Status: <span class="badge bg-success rounded-0">Operational</span></div>
+            </div>
+        </div>
+    </footer>
+    {% endif %}
+
     <a class="ai-travel-launcher" href="{% url 'travel-chat' %}" aria-label="Open AI Travel Agent">
         <i class="fas fa-robot" aria-hidden="true"></i>
         <span>AI Travel Agent</span>

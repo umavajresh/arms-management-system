@@ -253,9 +253,29 @@ class Reservation(models.Model):
     date_added = models.DateTimeField(default = timezone.now)
     date_created = models.DateTimeField(auto_now = True)
     seat_number = models.CharField(max_length=10, null=True, blank=True)
+    booking_reference = models.CharField(max_length=32, unique=True, null=True, blank=True, db_index=True)
+    is_guest = models.BooleanField(default=False)
 
     class Meta:
         verbose_name_plural = "List of Reservations"
+
+    @classmethod
+    def generate_booking_reference(cls, is_guest=False):
+        import secrets
+        prefix = "GUEST" if is_guest else "ARMS"
+        for _ in range(10):
+            token = secrets.token_hex(4).upper()
+            ref = f"{prefix}-{token[:4]}-{token[4:]}"
+            if not cls.objects.filter(booking_reference=ref).exists():
+                return ref
+        return f"{prefix}-{secrets.token_hex(6).upper()}"
+
+    def save(self, *args, **kwargs):
+        if not self.booking_reference:
+            self.booking_reference = self.generate_booking_reference(is_guest=(self.user is None or self.is_guest))
+        if self.user is None:
+            self.is_guest = True
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return str(f"{self.flight.code} - {self.first_name} {self.last_name}")
@@ -567,3 +587,39 @@ class UserNotification(models.Model):
             reservation=reservation
         )
         return notification
+
+
+class UserTravelPreference(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="travel_preference")
+    preferred_language = models.CharField(max_length=10, default='en', choices=[
+        ('en', 'English'),
+        ('es', 'Spanish'),
+        ('fr', 'French'),
+        ('de', 'German'),
+        ('ja', 'Japanese'),
+        ('hi', 'Hindi'),
+    ])
+    preferred_currency = models.CharField(max_length=10, default='USD', choices=[
+        ('USD', 'USD ($)'),
+        ('EUR', 'EUR (€)'),
+        ('GBP', 'GBP (£)'),
+        ('JPY', 'JPY (¥)'),
+        ('INR', 'INR (₹)'),
+    ])
+    preferred_seat_class = models.CharField(max_length=20, default='Economy', choices=[
+        ('Economy', 'Economy'),
+        ('Business', 'Business Class'),
+    ])
+    dietary_preference = models.CharField(max_length=50, blank=True, default='')
+    home_airport = models.ForeignKey(Airport, on_delete=models.SET_NULL, null=True, blank=True)
+    interests = models.CharField(max_length=255, blank=True, default='', help_text="e.g. culture, beach, cuisine, adventure")
+    budget_level = models.CharField(max_length=20, default='moderate', choices=[
+        ('economy', 'Economy / Budget'),
+        ('moderate', 'Moderate'),
+        ('luxury', 'Luxury'),
+    ])
+    date_updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Preferences for {self.user.username}"
+

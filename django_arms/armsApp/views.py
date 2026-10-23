@@ -42,18 +42,13 @@ def _flight_seat_inventory(flight):
 
 
 def landing_page(request):
-    # Clear any potential cache data
-    if not request.user.is_authenticated:
-        request.session.flush()
-    
     context = context_data()
-    context['topbar'] = False
-    context['footer'] = False
-    context['page_title'] = "Welcome to Airline Reservation System"
+    context['topbar'] = True
+    context['footer'] = True
+    context['page_title'] = "ARMS 2.0 - Cinematic Airline Reservation and Travel Management"
     
     if request.user.is_authenticated:
         try:
-            # Check user role and redirect appropriately
             from armsApp.models import UserProfile
             try:
                 profile = UserProfile.objects.get(user=request.user)
@@ -62,21 +57,27 @@ def landing_page(request):
                 else:
                     return redirect("user-dashboard")  # Regular user dashboard
             except UserProfile.DoesNotExist:
-                # Create a default profile for the user
                 profile = UserProfile.objects.create(
                     user=request.user,
                     custom_id=f"UID{request.user.id}",
                     mobile="",
                     is_admin=False,
-                    user_type='user'  # Default to regular user
+                    user_type='user'
                 )
                 return redirect("user-dashboard")
-        except Exception as e:
+        except Exception:
             logger.exception("Error in landing page")
-            # Default to user dashboard on error
             return redirect("user-dashboard")
     
-    # For non-authenticated users, show the landing page
+    # Load dynamic real flight and airport data for the interactive landing experience
+    context['airports'] = models.Airport.objects.filter(delete_flag=0, status=1).order_by('name')
+    context['airlines'] = models.Airlines.objects.filter(delete_flag=0, status=1).order_by('name')
+    context['upcoming_flights'] = models.Flights.objects.filter(
+        departure__gte=timezone.now(),
+        delete_flag=0,
+        status=1
+    ).select_related('airline', 'from_airport', 'to_airport').order_by('departure')[:4]
+    
     return render(request, 'landing.html', context)
 
 def user_dashboard(request):
@@ -822,6 +823,14 @@ def search_result(request, fromA=None, toA=None, departure = None):
     context = context_data()
     context['page'] = 'Search Result'
     
+    # Fallback to GET or POST parameters if positional args are omitted
+    if fromA is None:
+        fromA = request.GET.get('from_airport') or request.POST.get('from_airport')
+    if toA is None:
+        toA = request.GET.get('to_airport') or request.POST.get('to_airport')
+    if departure is None:
+        departure = request.GET.get('departure_date') or request.POST.get('departure_date')
+
     # Store search parameters in context for filter form
     context['from_airport'] = fromA
     context['to_airport'] = toA
@@ -839,14 +848,18 @@ def search_result(request, fromA=None, toA=None, departure = None):
     context['max_price'] = max_price
     context['time_filter'] = time_filter
     
-    if fromA is None and toA is None and departure is None:
+    if not fromA or not toA or not departure:
         messages.error(request, "Invalid Search Inputs")
         return redirect('public-page')
     else:
-        departure = datetime.datetime.strptime(departure, "%Y-%m-%d")
-        year = departure.strftime("%Y")
-        month = departure.strftime("%m")
-        day = departure.strftime("%d")
+        try:
+            departure_dt = datetime.datetime.strptime(str(departure), "%Y-%m-%d")
+        except ValueError:
+            messages.error(request, "Invalid departure date format. Please use YYYY-MM-DD.")
+            return redirect('public-page')
+        year = departure_dt.strftime("%Y")
+        month = departure_dt.strftime("%m")
+        day = departure_dt.strftime("%d")
         
         # Base query with departure time validation
         from django.utils import timezone
@@ -915,22 +928,30 @@ def save_reservation(request):
             {'status': 'failed', 'msg': 'A POST request is required.'},
             status=405,
         )
-    if not request.user.is_authenticated:
+
+    is_guest = not request.user.is_authenticated and (
+        request.POST.get('is_guest') == '1'
+        or request.session.get('is_guest') is True
+        or request.POST.get('guest_booking') == '1'
+    )
+
+    if not request.user.is_authenticated and not is_guest:
         return JsonResponse(
             {'status': 'failed', 'msg': 'Please sign in before submitting a reservation.'},
             status=401,
         )
 
-    verified_until = request.session.get('reservation_verified_until')
-    if (
-        not isinstance(verified_until, (int, float))
-        or timezone.now().timestamp() >= verified_until
-    ):
-        request.session.pop('reservation_verified_until', None)
-        return JsonResponse(
-            {'status': 'failed', 'msg': 'Please complete password and security verification again.'},
-            status=403,
-        )
+    if not is_guest:
+        verified_until = request.session.get('reservation_verified_until')
+        if (
+            not isinstance(verified_until, (int, float))
+            or timezone.now().timestamp() >= verified_until
+        ):
+            request.session.pop('reservation_verified_until', None)
+            return JsonResponse(
+                {'status': 'failed', 'msg': 'Please complete password and security verification again.'},
+                status=403,
+            )
 
     flight_id = request.POST.get('flight', '')
     if not flight_id or str(request.session.get('selected_flight')) != flight_id:
@@ -1061,7 +1082,12 @@ def save_reservation(request):
                 status=400,
             )
         reservation = form.save(commit=False)
-        reservation.user = request.user
+        if is_guest:
+            reservation.user = None
+            reservation.is_guest = True
+        else:
+            reservation.user = request.user
+            reservation.is_guest = False
         reservation.status = '0'
         passenger_forms.append(reservation)
 
@@ -1120,18 +1146,40 @@ def save_reservation(request):
         'reservation_verified_until',
     ):
         request.session.pop(key, None)
+    primary_reference = passenger_forms[0].booking_reference if passenger_forms else None
+    if is_guest and primary_reference:
+        request.session['last_guest_reference'] = primary_reference
+        redirect_url = f"/booking_confirmation/{primary_reference}"
+    else:
+        redirect_url = "/user_reservations"
+
     message = (
         "Your reservation has been submitted successfully. It is now pending admin approval."
         if count == 1
         else f"Your reservation for {count} passengers has been submitted successfully. It is now pending admin approval."
     )
     messages.success(request, message)
-    return JsonResponse({'status': 'success', 'msg': message})
+    return JsonResponse({
+        'status': 'success',
+        'msg': message,
+        'booking_reference': primary_reference,
+        'is_guest': is_guest,
+        'redirect': redirect_url,
+    })
 
-@login_required
+
+def save_guest_reservation(request):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'failed', 'msg': 'A POST request is required.'}, status=405)
+    post_data = request.POST.copy()
+    post_data['is_guest'] = '1'
+    request.POST = post_data
+    return save_reservation(request)
+
 def reserve_form(request, pk=None):
     context = context_data()
     context['page'] = 'Search Result'
+    context['is_guest'] = not request.user.is_authenticated
     
     if pk is None:
         messages.error(request, "Invalid Flight ID")
@@ -1336,9 +1384,21 @@ def travel_chat_api(request):
         )
 
     # ---------------------------------------------------------
-    # 2. Get user's message
+    # 2. Get user's message & language preferences
     # ---------------------------------------------------------
     message = request.POST.get('message', '').strip()
+    language = (request.POST.get('language') or 'en').strip().lower()
+
+    # Tool execution pathway for direct UI tool calls
+    tool_name = request.POST.get('tool_name')
+    if tool_name:
+        from armsApp.ai_chatbot import execute_travel_tool
+        try:
+            tool_args = json.loads(request.POST.get('tool_args', '{}'))
+        except (json.JSONDecodeError, TypeError):
+            tool_args = {}
+        tool_res = execute_travel_tool(tool_name, tool_args)
+        return JsonResponse({'status': 'success', 'tool_result': tool_res})
 
     if not message:
         return HttpResponse(
@@ -1377,13 +1437,26 @@ def travel_chat_api(request):
     # ---------------------------------------------------------
     # 6. Generate a plan grounded in matching flight inventory
     # ---------------------------------------------------------
+    user_preferences = getattr(request.user, 'travel_preference', None) if request.user.is_authenticated else None
     try:
-        response = get_travel_response(message, flights)
+        response = get_travel_response(
+            message,
+            flights,
+            language=language,
+            user_preferences=user_preferences,
+            session_context=request.session.get('ai_chat_history', [])
+        )
     except Exception as e:
         response = (
             "I could not generate the full travel plan right now. "
             "Please try again, or search the flight inventory directly."
         )
+
+    # Maintain bounded session memory
+    history = request.session.get('ai_chat_history', [])
+    history.append({'role': 'user', 'content': message[:300]})
+    history.append({'role': 'assistant', 'content': response[:600]})
+    request.session['ai_chat_history'] = history[-10:]
 
     # ---------------------------------------------------------
     # 7. Build response
@@ -1425,7 +1498,14 @@ def profile(request):
     # Get user profile data if it exists
     try:
         context['user_profile'] = request.user.profile
-    except:
+    except Exception:
+        pass
+
+    try:
+        from armsApp.models import UserTravelPreference
+        pref, _ = UserTravelPreference.objects.get_or_create(user=request.user)
+        context['travel_preference'] = pref
+    except Exception:
         pass
         
     return render(request,'profile.html', context)
@@ -2041,3 +2121,122 @@ def mark_notification_read(request):
         resp['msg'] = f'Error: {str(e)}'
     
     return HttpResponse(json.dumps(resp), content_type="application/json")
+
+
+def booking_confirmation(request, reference=None):
+    if not reference:
+        return redirect('public-page')
+
+    reservations = models.Reservation.objects.filter(booking_reference=reference).select_related(
+        'flight', 'flight__airline', 'flight__from_airport', 'flight__to_airport'
+    )
+    if not reservations.exists():
+        messages.error(request, "Reservation reference not found.")
+        return redirect('guest-booking')
+
+    primary_reservation = reservations.first()
+    context = context_data()
+    context['page_title'] = f"Reservation Confirmation - {reference}"
+    context['reservation'] = primary_reservation
+    context['all_passengers'] = reservations
+    context['is_guest'] = primary_reservation.is_guest
+    return render(request, 'booking_confirmation.html', context)
+
+
+def guest_booking(request):
+    context = context_data()
+    context['page_title'] = "Guest Reservation Lookup"
+    context['found_reservation'] = None
+    context['can_cancel'] = False
+
+    if request.method == 'POST':
+        failed_attempts = request.session.get('guest_lookup_fails', 0)
+        last_attempt_time = request.session.get('guest_lookup_time', 0)
+        current_time = timezone.now().timestamp()
+
+        if failed_attempts >= 5 and (current_time - last_attempt_time) < 600:
+            messages.error(request, "Too many lookup attempts. Please wait 10 minutes before trying again.")
+            return render(request, 'guest_booking.html', context)
+
+        reference = (request.POST.get('reference') or '').strip().upper()
+        verification_field = (request.POST.get('verification') or '').strip().lower()
+
+        if not reference or not verification_field:
+            messages.error(request, "Please enter both the booking reference and passenger email or last name.")
+            return render(request, 'guest_booking.html', context)
+
+        reservation = models.Reservation.objects.filter(
+            booking_reference=reference
+        ).select_related('flight', 'flight__airline', 'flight__from_airport', 'flight__to_airport').first()
+
+        if reservation and (
+            reservation.email.lower() == verification_field
+            or reservation.last_name.lower() == verification_field
+        ):
+            request.session['guest_lookup_fails'] = 0
+            context['found_reservation'] = reservation
+            context['can_cancel'] = reservation.can_cancel()
+        else:
+            request.session['guest_lookup_fails'] = failed_attempts + 1
+            request.session['guest_lookup_time'] = current_time
+            messages.error(request, "No reservation found matching the provided reference and passenger verification.")
+
+    return render(request, 'guest_booking.html', context)
+
+
+def cancel_guest_reservation(request):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'failed', 'msg': 'A POST request is required.'}, status=405)
+
+    reference = (request.POST.get('reference') or '').strip().upper()
+    verification = (request.POST.get('verification') or '').strip().lower()
+
+    if not reference or not verification:
+        return JsonResponse({'status': 'failed', 'msg': 'Missing required verification details.'}, status=400)
+
+    reservation = models.Reservation.objects.filter(booking_reference=reference).first()
+    if not reservation:
+        return JsonResponse({'status': 'failed', 'msg': 'Reservation not found.'}, status=404)
+
+    if (
+        reservation.email.lower() != verification
+        and reservation.last_name.lower() != verification
+    ):
+        return JsonResponse({'status': 'failed', 'msg': 'Verification failed. Passenger details do not match.'}, status=403)
+
+    if not reservation.can_cancel():
+        return JsonResponse({'status': 'failed', 'msg': reservation.get_cancellation_status()}, status=400)
+
+    reservation.status = '2'
+    reservation.save(update_fields=['status'])
+    messages.success(request, f"Reservation {reference} has been successfully cancelled.")
+    return JsonResponse({'status': 'success', 'msg': 'Reservation successfully cancelled.'})
+
+
+def terms_of_service(request):
+    context = context_data()
+    context['page_title'] = "Terms of Service"
+    return render(request, 'terms.html', context)
+
+
+def privacy_policy(request):
+    context = context_data()
+    context['page_title'] = "Privacy Policy"
+    return render(request, 'privacy.html', context)
+
+
+@login_required
+def update_travel_preferences(request):
+    from armsApp.models import UserTravelPreference
+    pref, _ = UserTravelPreference.objects.get_or_create(user=request.user)
+    if request.method == 'POST':
+        pref.preferred_language = request.POST.get('preferred_language', 'en')
+        pref.preferred_currency = request.POST.get('preferred_currency', 'USD')
+        pref.preferred_seat_class = request.POST.get('preferred_seat_class', 'Economy')
+        pref.dietary_preference = request.POST.get('dietary_preference', '').strip()
+        pref.interests = request.POST.get('interests', '').strip()
+        pref.budget_level = request.POST.get('budget_level', 'moderate')
+        pref.save()
+        messages.success(request, "Your travel preferences have been updated.")
+    return redirect('profile-page')
+

@@ -276,12 +276,12 @@ def search_real_flights(prefs, limit=5):
         })
 
     return flights
-def _check_faq_or_flight_status(message):
+def _check_faq_or_flight_status(message, language='en'):
     lower = (message or '').strip().lower()
 
     # Flight status check
     flight_match = re.search(r'\b([a-zA-Z]{2,4}\s*[-]?\s*\d{2,4})\b', message or '', re.IGNORECASE)
-    if flight_match and any(keyword in lower for keyword in ['status', 'track', 'flight', 'delayed', 'departure', 'where is', 'on time', 'info']):
+    if flight_match and any(keyword in lower for keyword in ['status', 'track', 'flight', 'delayed', 'departure', 'where is', 'on time', 'info', 'vuelo', 'flughafen', 'état']):
         raw_code = flight_match.group(1).replace(' ', '').replace('-', '').upper()
         flight = Flights.objects.filter(
             Q(code__iexact=raw_code) | Q(code__icontains=raw_code),
@@ -312,7 +312,22 @@ def _check_faq_or_flight_status(message):
             ])
 
     # Baggage FAQ
-    if any(k in lower for k in ['baggage', 'luggage', 'cabin bag', 'check-in bag', 'weight limit']):
+    if any(k in lower for k in ['baggage', 'luggage', 'cabin bag', 'check-in bag', 'weight limit', 'equipaje', 'bagages', 'gepäck']):
+        if language == 'es':
+            return "\n".join([
+                "Política de equipaje de ARMS:",
+                "- Equipaje de mano: 1 pieza hasta 7 kg (máx. 55 x 35 x 25 cm) más 1 artículo personal.",
+                "- Equipaje de bodega nacional: 1 pieza de hasta 15 kg en Economy; hasta 25 kg en Business Class.",
+                "- Equipaje de bodega internacional: hasta 30 kg en Economy; hasta 40 kg en Business Class.",
+                "Puede revisar su itinerario en [Mis Reservas](/user_reservations).",
+            ])
+        elif language == 'fr':
+            return "\n".join([
+                "Politique des bagages ARMS:",
+                "- Bagage en cabine: 1 pièce jusqu'à 7 kg (55 x 35 x 25 cm) plus 1 accessoire personnel.",
+                "- Bagage en soute national: jusqu'à 15 kg en Economy; jusqu'à 25 kg en Business Class.",
+                "- Bagage en soute international: jusqu'à 30 kg en Economy; jusqu'à 40 kg en Business Class.",
+            ])
         return "\n".join([
             "ARMS Airline Baggage Policy:",
             "- Cabin Baggage: 1 piece up to 7 kg (dimensions up to 55 x 35 x 25 cm) plus 1 small personal item (handbag or laptop bag).",
@@ -323,7 +338,13 @@ def _check_faq_or_flight_status(message):
         ])
 
     # Cancellation FAQ
-    if 'cancel' in lower and any(k in lower for k in ['policy', 'how', 'booking', 'reservation', 'ticket', 'refund']):
+    if any(k in lower for k in ['cancel', 'cancelar', 'annuler', 'stornieren']) and any(k in lower for k in ['policy', 'how', 'booking', 'reservation', 'ticket', 'refund', 'reembolso', 'rückerstattung']):
+        if language == 'es':
+            return "\n".join([
+                "Guía de Cancelación y Reembolso de ARMS:",
+                "- Cancelación en línea: Los pasajeros pueden cancelar cualquier reserva pendiente o confirmada desde [Mis Reservas](/user_reservations) siempre que el vuelo no haya despegado.",
+                "- Vuelos pasados: No es posible cancelar vuelos que ya hayan partido.",
+            ])
         return "\n".join([
             "ARMS Reservation Cancellation & Refund Guidelines:",
             "- Self-Service Cancellation: Passengers can cancel any pending or confirmed booking from [My Bookings](/user_reservations) as long as the scheduled flight has not yet departed.",
@@ -333,7 +354,7 @@ def _check_faq_or_flight_status(message):
         ])
 
     # Check-in & Boarding FAQ
-    if any(k in lower for k in ['check-in', 'check in time', 'boarding pass', 'when should i arrive', 'counter open', 'airport timing']):
+    if any(k in lower for k in ['check-in', 'check in time', 'boarding pass', 'when should i arrive', 'counter open', 'airport timing', 'facturación', 'enregistrement']):
         return "\n".join([
             "ARMS Airport Check-in & Boarding Information:",
             "- Domestic Flights: Airport check-in counters open 2 hours before scheduled departure and close 45 minutes prior.",
@@ -345,9 +366,102 @@ def _check_faq_or_flight_status(message):
     return None
 
 
-def get_travel_response(message, flights=None):
+def execute_travel_tool(tool_name, arguments=None):
+    """
+    Controlled tool orchestration layer for the AI Travel Agent.
+    Strictly validates arguments on the server.
+    """
+    arguments = arguments or {}
+    if tool_name == 'search_flights':
+        origin = arguments.get('origin')
+        destination = arguments.get('destination')
+        max_price = arguments.get('max_price')
+
+        query = Flights.objects.filter(delete_flag=0, departure__gte=timezone.now())
+        if origin:
+            query = query.filter(Q(from_airport__name__icontains=origin) | Q(from_airport__code__icontains=origin))
+        if destination:
+            query = query.filter(Q(to_airport__name__icontains=destination) | Q(to_airport__code__icontains=destination))
+        if max_price:
+            try:
+                query = query.filter(economy_price__lte=float(max_price))
+            except (ValueError, TypeError):
+                pass
+
+        matches = query.select_related('airline', 'from_airport', 'to_airport')[:5]
+        return [
+            {
+                'id': f.id,
+                'code': f.code,
+                'airline': f.airline.name,
+                'from': f"{f.from_airport.code} - {f.from_airport.name}",
+                'to': f"{f.to_airport.code} - {f.to_airport.name}",
+                'departure': f.departure.strftime('%d %b %Y, %I:%M %p'),
+                'economy_price': f.economy_price,
+                'currency': f.currency,
+                'available_seats': f.e_slot(),
+            }
+            for f in matches
+        ]
+
+    elif tool_name == 'get_flight_details':
+        code = (arguments.get('code') or '').strip().upper()
+        f = Flights.objects.filter(code__iexact=code, delete_flag=0).select_related('airline', 'from_airport', 'to_airport', 'aircraft').first()
+        if not f:
+            return {'error': f"Flight {code} not found in ARMS inventory."}
+        return {
+            'id': f.id,
+            'code': f.code,
+            'airline': f.airline.name,
+            'departure': f.departure.strftime('%d %b %Y, %I:%M %p'),
+            'arrival': f.estimated_arrival.strftime('%d %b %Y, %I:%M %p'),
+            'route': f"{f.from_airport.name} -> {f.to_airport.name}",
+            'aircraft': f"{f.aircraft.model} ({f.aircraft.code})",
+            'economy_price': f.economy_price,
+            'business_price': f.business_class_price,
+            'currency': f.currency,
+            'available_economy': f.e_slot(),
+            'available_business': f.b_slot(),
+        }
+
+    elif tool_name == 'lookup_reservation':
+        ref = (arguments.get('reference') or '').strip().upper()
+        verification = (arguments.get('verification') or '').strip().lower()
+        from armsApp.models import Reservation
+        res = Reservation.objects.filter(booking_reference=ref).select_related('flight', 'flight__from_airport', 'flight__to_airport').first()
+        if not res or (res.email.lower() != verification and res.last_name.lower() != verification):
+            return {'error': 'Invalid booking reference or passenger verification.'}
+        return {
+            'reference': res.booking_reference,
+            'passenger': f"{res.first_name} {res.last_name}",
+            'flight_code': res.flight.code,
+            'route': f"{res.flight.from_airport.name} to {res.flight.to_airport.name}",
+            'departure': res.flight.departure.strftime('%d %b %Y, %I:%M %p'),
+            'seat_number': res.seat_number,
+            'status': res.get_status_display_text()[0],
+            'can_cancel': res.can_cancel(),
+        }
+
+    return {'error': f"Unsupported tool: {tool_name}"}
+
+
+def get_travel_response(message, flights=None, language='en', user_preferences=None, session_context=None):
+    # Detect language if not explicitly provided or if message strongly indicates
+    lower_msg = (message or '').strip().lower()
+    if language == 'en':
+        if any(w in lower_msg for w in ['hola', 'buenos días', 'gracias', 'viaje', 'equipaje']):
+            language = 'es'
+        elif any(w in lower_msg for w in ['bonjour', 'salut', 'merci', 'voyage']):
+            language = 'fr'
+        elif any(w in lower_msg for w in ['hallo', 'guten tag', 'danke', 'flug']):
+            language = 'de'
+        elif any(w in lower_msg for w in ['こんにちは', 'ありがとう', 'フライト']):
+            language = 'ja'
+        elif any(w in lower_msg for w in ['नमस्ते', 'धन्यवाद', 'यात्रा', 'उड़ान']):
+            language = 'hi'
+
     # Check for direct FAQ or status queries first
-    faq_response = _check_faq_or_flight_status(message)
+    faq_response = _check_faq_or_flight_status(message, language=language)
     if faq_response:
         return faq_response
 

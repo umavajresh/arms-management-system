@@ -3,95 +3,360 @@
 
 {% block pageContent %}
 <style>
-    .landing-shell {
-        max-width: 900px;
-        margin: 0 auto;
-        border: 1px solid var(--arms-border);
-        border-radius: 8px;
-        background: var(--arms-surface);
+    .hero-container {
+        position: relative;
+        background-color: #0b0f17;
+        background-image: linear-gradient(rgba(11, 15, 23, 0.82), rgba(11, 15, 23, 0.94)), url('{% static "assets/default/img/wallpaper.jpg" %}');
+        background-position: center center;
+        background-size: cover;
+        border-bottom: 1px solid var(--arms-border, #263345);
+        padding: clamp(3rem, 7vw, 6rem) 0 clamp(2rem, 5vw, 4rem);
     }
-
-    .landing-intro {
-        padding: clamp(1.5rem, 4vw, 3rem);
-        border-bottom: 1px solid var(--arms-border);
+    .hero-title {
+        color: #f8fafc;
+        font-size: clamp(2rem, 4.5vw, 3.25rem);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
     }
-
-    .landing-intro p,
-    .landing-option p {
-        color: var(--arms-muted);
+    .hero-gold-text {
+        color: var(--arms-gold, #c5a880);
     }
-
-    .landing-options {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .hero-subtitle {
+        color: var(--arms-muted, #94a3b8);
+        font-size: clamp(1rem, 2vw, 1.2rem);
+        max-width: 680px;
+        line-height: 1.6;
     }
-
-    .landing-option {
-        padding: clamp(1.5rem, 4vw, 2.5rem);
+    .search-widget-card {
+        background-color: var(--arms-surface, #131924);
+        border: 1px solid var(--arms-border, #263345);
+        border-radius: 6px;
+        padding: 1.5rem;
     }
-
-    .landing-option + .landing-option {
-        border-left: 1px solid var(--arms-border);
+    .form-control-dark, .form-select-dark {
+        background-color: #0b0f17;
+        border: 1px solid var(--arms-border, #263345);
+        color: #e2e8f0;
     }
-
-    .landing-option h2 {
-        font-size: 1.25rem;
+    .form-control-dark:focus, .form-select-dark:focus {
+        background-color: #0b0f17;
+        border-color: var(--arms-gold, #c5a880);
+        color: #e2e8f0;
+        box-shadow: none;
     }
-
-    .landing-action {
-        display: inline-block;
-        padding: 0.7rem 1rem;
-        border: 1px solid #315b6b;
-        border-radius: 5px;
-        color: #fff;
-        background: #315b6b;
-        text-decoration: none;
+    .btn-gold {
+        background-color: var(--arms-gold, #c5a880);
+        border: 1px solid var(--arms-gold, #c5a880);
+        color: #0b0f17;
+        font-weight: 600;
     }
-
-    .landing-action:hover {
-        color: #fff;
-        background: #274956;
-        border-color: #274956;
+    .btn-gold:hover, .btn-gold:focus {
+        background-color: var(--arms-gold-hover, #b3956e);
+        border-color: var(--arms-gold-hover, #b3956e);
+        color: #0b0f17;
     }
-
-    .landing-footer {
-        padding: 1rem clamp(1.5rem, 4vw, 3rem);
-        border-top: 1px solid var(--arms-border);
+    .destination-card {
+        background-color: var(--arms-surface, #131924);
+        border: 1px solid var(--arms-border, #263345);
+        border-radius: 6px;
+        transition: border-color 0.15s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
     }
-
-    @media (max-width: 575px) {
-        .landing-options {
-            grid-template-columns: 1fr;
-        }
-
-        .landing-option + .landing-option {
-            border-top: 1px solid var(--arms-border);
-            border-left: 0;
-        }
+    .destination-card:hover {
+        border-color: var(--arms-gold, #c5a880);
+    }
+    .feature-showcase-card {
+        background-color: var(--arms-surface, #131924);
+        border: 1px solid var(--arms-border, #263345);
+        border-radius: 6px;
+        padding: 2rem;
+        height: 100%;
     }
 </style>
 
-<section class="container py-5">
-    <div class="landing-shell">
-        <header class="landing-intro">
-            <h1 class="h2 mb-2">Airline Reservation Management System</h1>
-            <p class="mb-0">Choose a secure sign-in to continue.</p>
-        </header>
-        <div class="landing-options">
-            <section class="landing-option" aria-labelledby="admin-entry-title">
-                <h2 id="admin-entry-title">Administration</h2>
-                <p>Manage airlines, airports, aircraft, flights, and reservation requests.</p>
-                <a href="{% url 'login-page' %}?type=admin" class="landing-action">Sign in as administrator</a>
-            </section>
-            <section class="landing-option" aria-labelledby="passenger-entry-title">
-                <h2 id="passenger-entry-title">Passenger services</h2>
-                <p>Search for flights, request seats, and manage your reservations.</p>
-                <a href="{% url 'login-page' %}?type=user" class="landing-action">Sign in as passenger</a>
-            </section>
+<!-- Hero Section -->
+<section class="hero-container">
+    <div class="container">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-8 col-12">
+                <span class="badge bg-dark border text-light px-3 py-2 rounded-0 mb-3" style="border-color: var(--arms-border, #263345) !important;">
+                    ARMS 2.0 &bull; Intelligent Aviation Platform
+                </span>
+                <h1 class="hero-title mb-3">
+                    Intelligent Airline Reservation and <span class="hero-gold-text">Cinematic Travel Management</span>
+                </h1>
+                <p class="hero-subtitle mb-4">
+                    Experience next-generation travel orchestration with verified airline inventory, real-time radar telemetry, and conversational travel intelligence.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{% url 'search-flight' %}" class="btn btn-gold rounded-0 px-4 py-2">
+                        <i class="fas fa-plane-departure me-2" aria-hidden="true"></i> Search Scheduled Flights
+                    </a>
+                    <a href="{% url 'travel-chat' %}" class="btn btn-outline-light rounded-0 px-4 py-2">
+                        <i class="fas fa-robot me-2" aria-hidden="true"></i> Open AI Travel Agent
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-4 col-12">
+                <div class="p-3 border rounded-0" style="background-color: rgba(19, 25, 36, 0.95); border-color: var(--arms-border, #263345) !important;">
+                    <div class="small fw-semibold text-secondary mb-2">Operational Telemetry</div>
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-secondary border-opacity-25">
+                        <span class="small text-muted">Active Flight Routes</span>
+                        <span class="fw-bold text-light">120+ Sectors</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-secondary border-opacity-25">
+                        <span class="small text-muted">Flight Radar Status</span>
+                        <span class="badge bg-success rounded-0">Live Synchronized</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">Guest Booking Mode</span>
+                        <span class="badge bg-dark border text-light rounded-0">Active</span>
+                    </div>
+                </div>
+            </div>
         </div>
-        <footer class="landing-footer">
-            <p class="mb-0">New passenger? <a href="{% url 'register-page' %}">Create an account</a></p>
-        </footer>
+
+        <!-- Integrated Flight Search Widget -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <div class="search-widget-card">
+                    <h2 class="h6 fw-semibold text-light mb-3">
+                        <i class="fas fa-search me-2 text-secondary" aria-hidden="true"></i>Quick Flight Search
+                    </h2>
+                    <form method="GET" action="{% url 'search-result' %}">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-lg-3 col-md-6 col-12">
+                                <label for="from_airport" class="form-label small text-muted">Origin Airport</label>
+                                <select class="form-select form-select-dark rounded-0" id="from_airport" name="from_airport" required>
+                                    <option value="" selected disabled>Select Departure</option>
+                                    {% for a in airports %}
+                                    <option value="{{ a.id }}">{{ a.name }} ({{ a.code }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-lg-3 col-md-6 col-12">
+                                <label for="to_airport" class="form-label small text-muted">Destination Airport</label>
+                                <select class="form-select form-select-dark rounded-0" id="to_airport" name="to_airport" required>
+                                    <option value="" selected disabled>Select Arrival</option>
+                                    {% for a in airports %}
+                                    <option value="{{ a.id }}">{{ a.name }} ({{ a.code }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-lg-3 col-md-6 col-12">
+                                <label for="departure_date" class="form-label small text-muted">Departure Date</label>
+                                <input type="date" class="form-control form-control-dark rounded-0" id="departure_date" name="departure_date" required>
+                            </div>
+                            <div class="col-lg-3 col-md-6 col-12">
+                                <button type="submit" class="btn btn-gold w-100 rounded-0 py-2">
+                                    Find Available Flights
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </section>
+
+<!-- Destination Discovery (Strictly 4-column responsive grid, never 3 cards) -->
+<section class="py-5" style="background-color: #0b0f17;">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-2">
+            <div>
+                <span class="badge bg-secondary rounded-0 text-uppercase mb-2">Curated Sectors</span>
+                <h2 class="h4 fw-bold text-light mb-1">Featured Global Destinations</h2>
+                <p class="small text-muted mb-0">Explore premier intercontinental flight connections with verified airline inventory.</p>
+            </div>
+            <a href="{% url 'search-flight' %}" class="small text-secondary text-decoration-none">
+                View all flight routes &rarr;
+            </a>
+        </div>
+
+        <div class="row g-4">
+            <!-- 1. Tokyo -->
+            <div class="col-lg-3 col-md-6 col-12">
+                <div class="destination-card p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge bg-dark border text-light rounded-0">Asia Pacific</span>
+                        <span class="small fw-semibold" style="color: var(--arms-gold, #c5a880);">HND / NRT</span>
+                    </div>
+                    <h3 class="h5 fw-bold text-light mb-1">Tokyo, Japan</h3>
+                    <p class="small text-muted mb-3 flex-grow-1">
+                        High-speed cultural transit, cherry blossom seasons, and metropolitan culinary innovation.
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25">
+                        <span class="small text-muted">Daily Service</span>
+                        <a href="{% url 'search-flight' %}" class="btn btn-sm btn-outline-light rounded-0">
+                            Book Route
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Paris -->
+            <div class="col-lg-3 col-md-6 col-12">
+                <div class="destination-card p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge bg-dark border text-light rounded-0">Europe</span>
+                        <span class="small fw-semibold" style="color: var(--arms-gold, #c5a880);">CDG / ORY</span>
+                    </div>
+                    <h3 class="h5 fw-bold text-light mb-1">Paris, France</h3>
+                    <p class="small text-muted mb-3 flex-grow-1">
+                        Architectural landmarks, world-class museum exhibitions, and historic Seine riverfronts.
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25">
+                        <span class="small text-muted">Direct Service</span>
+                        <a href="{% url 'search-flight' %}" class="btn btn-sm btn-outline-light rounded-0">
+                            Book Route
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Dubai -->
+            <div class="col-lg-3 col-md-6 col-12">
+                <div class="destination-card p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge bg-dark border text-light rounded-0">Middle East</span>
+                        <span class="small fw-semibold" style="color: var(--arms-gold, #c5a880);">DXB / DWC</span>
+                    </div>
+                    <h3 class="h5 fw-bold text-light mb-1">Dubai, UAE</h3>
+                    <p class="small text-muted mb-3 flex-grow-1">
+                        Global aviation crossroads, desert safari excursions, and modern skyline architecture.
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25">
+                        <span class="small text-muted">High Frequency</span>
+                        <a href="{% url 'search-flight' %}" class="btn btn-sm btn-outline-light rounded-0">
+                            Book Route
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. New York -->
+            <div class="col-lg-3 col-md-6 col-12">
+                <div class="destination-card p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge bg-dark border text-light rounded-0">North America</span>
+                        <span class="small fw-semibold" style="color: var(--arms-gold, #c5a880);">JFK / EWR</span>
+                    </div>
+                    <h3 class="h5 fw-bold text-light mb-1">New York, USA</h3>
+                    <p class="small text-muted mb-3 flex-grow-1">
+                        Broadway theatre districts, iconic skyline panoramas, and transcontinental financial hub.
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25">
+                        <span class="small text-muted">Daily Flights</span>
+                        <a href="{% url 'search-flight' %}" class="btn btn-sm btn-outline-light rounded-0">
+                            Book Route
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Intelligent Technology Showcase (2-column balanced grid) -->
+<section class="py-5 border-top border-bottom" style="background-color: var(--arms-surface, #131924); border-color: var(--arms-border, #263345) !important;">
+    <div class="container">
+        <div class="row g-4">
+            <!-- AI Assistant Showcase -->
+            <div class="col-lg-6 col-12">
+                <div class="feature-showcase-card">
+                    <span class="badge bg-dark border text-light rounded-0 mb-3" style="border-color: var(--arms-border, #263345) !important;">
+                        Conversational Intelligence
+                    </span>
+                    <h2 class="h4 fw-bold text-light mb-2">Multilingual AI Travel Assistant</h2>
+                    <p class="small text-muted mb-3">
+                        Plan journeys using natural language. Query real-time flight availability, baggage policies, self-service cancellation rules, and customized daily travel itineraries in English, Spanish, French, German, Japanese, and Hindi.
+                    </p>
+                    <div class="p-3 mb-3 border rounded-0" style="background-color: #0b0f17; border-color: var(--arms-border, #263345) !important;">
+                        <div class="small text-muted mb-1">Try asking:</div>
+                        <div class="small fw-semibold text-secondary">"What is the status of flight ARMS101?" or "Baggage allowance for international flights"</div>
+                    </div>
+                    <a href="{% url 'travel-chat' %}" class="btn btn-gold rounded-0 btn-sm px-3">
+                        <i class="fas fa-comments me-1" aria-hidden="true"></i> Start Travel Consultation
+                    </a>
+                </div>
+            </div>
+
+            <!-- Live Flight Radar Showcase -->
+            <div class="col-lg-6 col-12">
+                <div class="feature-showcase-card">
+                    <span class="badge bg-dark border text-light rounded-0 mb-3" style="border-color: var(--arms-border, #263345) !important;">
+                        Aviation Telemetry
+                    </span>
+                    <h2 class="h4 fw-bold text-light mb-2">Live Flight Radar and Telemetry</h2>
+                    <p class="small text-muted mb-3">
+                        Track commercial flights across interactive geospatial radar with real-time groundspeed, altitude telemetry, and route progress powered by OpenSky Network and AviationStack integrations.
+                    </p>
+                    <div class="p-3 mb-3 border rounded-0" style="background-color: #0b0f17; border-color: var(--arms-border, #263345) !important;">
+                        <div class="small text-muted mb-1">Telemetry Status:</div>
+                        <div class="small fw-semibold text-secondary">Geospatial Leaflet map &bull; Active transponder tracking &bull; Simulated radar fallback</div>
+                    </div>
+                    <a href="{% url 'flight-tracker' %}" class="btn btn-outline-light rounded-0 btn-sm px-3">
+                        <i class="fas fa-radar me-1" aria-hidden="true"></i> Launch Flight Radar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Guest Services and Access Portals (2-column balanced grid) -->
+<section class="py-5" style="background-color: #0b0f17;">
+    <div class="container">
+        <div class="row g-4">
+            <!-- Guest Portal -->
+            <div class="col-lg-6 col-12">
+                <div class="p-4 border rounded-0 h-100" style="background-color: var(--arms-surface, #131924); border-color: var(--arms-border, #263345) !important;">
+                    <span class="badge bg-secondary rounded-0 text-uppercase mb-2">Unauthenticated Services</span>
+                    <h2 class="h5 fw-bold text-light mb-2">Guest Reservation Services</h2>
+                    <p class="small text-muted mb-3">
+                        Retrieve, review, or cancel existing guest reservations without creating an account. Simply enter your booking reference and passenger credentials.
+                    </p>
+                    <a href="{% url 'guest-booking' %}" class="btn btn-sm btn-outline-secondary rounded-0">
+                        <i class="fas fa-search me-1" aria-hidden="true"></i> Guest Lookup Portal
+                    </a>
+                </div>
+            </div>
+
+            <!-- Passenger & Admin Portal -->
+            <div class="col-lg-6 col-12">
+                <div class="p-4 border rounded-0 h-100" style="background-color: var(--arms-surface, #131924); border-color: var(--arms-border, #263345) !important;">
+                    <span class="badge bg-secondary rounded-0 text-uppercase mb-2">Authenticated Members</span>
+                    <h2 class="h5 fw-bold text-light mb-2">Passenger and Admin Portals</h2>
+                    <p class="small text-muted mb-3">
+                        Sign in to access your personal booking history, configure Two-Factor Authentication (2FA), update travel preferences, or manage fleet schedules.
+                    </p>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'login-page' %}" class="btn btn-sm btn-outline-light rounded-0">
+                            Member Sign In
+                        </a>
+                        <a href="{% url 'register-page' %}" class="btn btn-sm btn-gold rounded-0">
+                            Create Account
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    // Pre-fill today's date in search widget if not set
+    $(function() {
+        var dateInput = $('#departure_date');
+        if (!dateInput.val()) {
+            var today = new Date().toISOString().split('T')[0];
+            dateInput.val(today);
+            dateInput.attr('min', today);
+        }
+    });
+</script>
 {% endblock pageContent %}

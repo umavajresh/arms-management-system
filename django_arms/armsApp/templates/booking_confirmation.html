@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block pageContent %}
+<style>
+    .confirmation-card {
+        background-color: var(--arms-surface, #131924);
+        border: 1px solid var(--arms-border, #263345);
+        border-radius: 6px;
+        color: var(--arms-text, #e2e8f0);
+    }
+    .confirmation-header {
+        background-color: var(--arms-card, #182230);
+        border-bottom: 1px solid var(--arms-border, #263345);
+        padding: 1.5rem 2rem;
+    }
+    .ref-badge {
+        font-family: monospace;
+        font-size: 1.25rem;
+        letter-spacing: 0.15rem;
+        background-color: #0b0f17;
+        color: var(--arms-gold, #c5a880);
+        padding: 0.4rem 0.8rem;
+        border: 1px solid var(--arms-border, #263345);
+        border-radius: 4px;
+        display: inline-block;
+    }
+    .flight-segment {
+        border-top: 1px solid var(--arms-border, #263345);
+        border-bottom: 1px solid var(--arms-border, #263345);
+        background-color: #0d131a;
+        padding: 1.25rem;
+    }
+    .btn-gold {
+        background-color: var(--arms-gold, #c5a880);
+        border: 1px solid var(--arms-gold, #c5a880);
+        color: #0b0f17;
+        font-weight: 600;
+    }
+    .btn-gold:hover, .btn-gold:focus {
+        background-color: var(--arms-gold-hover, #b3956e);
+        border-color: var(--arms-gold-hover, #b3956e);
+        color: #0b0f17;
+    }
+    @media print {
+        .no-print { display: none !important; }
+        body { background: #fff !important; color: #000 !important; }
+        .confirmation-card { border: 1px solid #000 !important; background: #fff !important; color: #000 !important; }
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-12">
+            <div class="card confirmation-card">
+                <div class="confirmation-header">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div>
+                            <span class="badge bg-secondary rounded-0 text-uppercase mb-2">Internal ARMS Reservation</span>
+                            <h1 class="h4 fw-bold mb-0 text-light">Booking Confirmation</h1>
+                        </div>
+                        <div class="text-end">
+                            <div class="small text-muted mb-1">Booking Reference</div>
+                            <span class="ref-badge">{{ reservation.booking_reference }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <!-- Status Notice -->
+                    <div class="p-3 mb-4 rounded-0 border" style="background-color: #16202c; border-color: var(--arms-border, #263345) !important;">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div>
+                                <span class="small text-muted">Reservation Status:</span>
+                                <span class="fw-bold ms-2" style="color: var(--arms-gold, #c5a880);">{{ reservation.get_status_display_text.0 }}</span>
+                            </div>
+                            <div class="small text-muted">
+                                Recorded on {{ reservation.date_added|date:"F d, Y at H:i" }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Flight Itinerary -->
+                    <div class="flight-segment mb-4">
+                        <div class="row g-3 align-items-center">
+                            <div class="col-md-5 col-12">
+                                <div class="small text-muted">Origin Airport</div>
+                                <div class="h5 fw-bold mb-0 text-light">{{ reservation.flight.from_airport.name }}</div>
+                                <div class="small text-secondary">{{ reservation.flight.from_airport.code }} &bull; Terminal 1</div>
+                                <div class="small text-muted mt-2">Departure</div>
+                                <div class="fw-semibold text-light">{{ reservation.flight.departure|date:"D, M d, Y - H:i" }}</div>
+                            </div>
+                            <div class="col-md-2 col-12 text-center text-secondary py-2">
+                                <div class="small fw-semibold mb-1">{{ reservation.flight.code }}</div>
+                                <i class="fas fa-plane" aria-hidden="true"></i>
+                                <div class="small text-muted mt-1">{{ reservation.flight.airline.name }}</div>
+                            </div>
+                            <div class="col-md-5 col-12 text-md-end">
+                                <div class="small text-muted">Destination Airport</div>
+                                <div class="h5 fw-bold mb-0 text-light">{{ reservation.flight.to_airport.name }}</div>
+                                <div class="small text-secondary">{{ reservation.flight.to_airport.code }} &bull; Main Terminal</div>
+                                <div class="small text-muted mt-2">Estimated Arrival</div>
+                                <div class="fw-semibold text-light">{{ reservation.flight.estimated_arrival|date:"D, M d, Y - H:i" }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Passenger Details -->
+                    <div class="mb-4">
+                        <h2 class="h6 fw-semibold text-light mb-3">Passenger Information</h2>
+                        <div class="table-responsive">
+                            <table class="table table-dark table-sm border" style="border-color: var(--arms-border, #263345) !important;">
+                                <thead>
+                                    <tr style="background-color: var(--arms-card, #182230);">
+                                        <th>Passenger Name</th>
+                                        <th>Gender</th>
+                                        <th>Seat Assigned</th>
+                                        <th>Travel Class</th>
+                                        <th>Contact Email</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in all_passengers %}
+                                    <tr>
+                                        <td class="fw-semibold text-light">{{ p.first_name }} {{ p.last_name }}</td>
+                                        <td>{{ p.gender }}</td>
+                                        <td><span class="badge bg-dark border text-light px-2 py-1">{{ p.seat_number|default:"TBA" }}</span></td>
+                                        <td>{{ p.get_type_display }}</td>
+                                        <td class="text-secondary">{{ p.email }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Legal and Regulatory Notice -->
+                    <div class="small text-muted p-3 border mb-4" style="background-color: #0b0f17; border-color: var(--arms-border, #263345) !important;">
+                        <div class="fw-semibold text-secondary mb-1">Important Passenger Notice:</div>
+                        This internal reservation reference confirms your seat allocation request in the ARMS flight database. Please present this reference code and valid government-issued photo identification at the airport counter or online check-in portal at least 2 hours prior to scheduled departure.
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 no-print">
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-0" onclick="window.print()">
+                            <i class="fas fa-print me-1" aria-hidden="true"></i> Print Itinerary
+                        </button>
+                        <div class="d-flex gap-2">
+                            {% if is_guest %}
+                            <a href="{% url 'guest-booking' %}" class="btn btn-sm btn-outline-light rounded-0">
+                                Guest Lookup Portal
+                            </a>
+                            {% else %}
+                            <a href="{% url 'user-reservations' %}" class="btn btn-sm btn-outline-light rounded-0">
+                                View in My Bookings
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'search-flight' %}" class="btn btn-sm btn-gold rounded-0">
+                                Book Another Flight
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock pageContent %}

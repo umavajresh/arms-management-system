@@ -8,65 +8,68 @@
     }
 
     .chat-shell {
-        border: 1px solid var(--arms-border);
-        background: var(--arms-surface);
+        border: 1px solid var(--arms-border, #263345);
+        background: var(--arms-surface, #131924);
         border-radius: 6px;
     }
 
     .chat-shell .card-header {
-        background: var(--arms-surface);
-        border-bottom: 1px solid var(--arms-border);
-        color: var(--arms-text);
+        background: var(--arms-card, #182230);
+        border-bottom: 1px solid var(--arms-border, #263345);
+        color: var(--arms-text, #e2e8f0);
     }
 
     .chat-body {
-        background: var(--arms-page);
+        background: #0b0f17;
     }
 
     .chat-message {
-        color: var(--arms-text);
-        background: var(--arms-surface);
-        border: 1px solid var(--arms-border);
+        color: var(--arms-text, #e2e8f0);
+        background: var(--arms-surface, #131924);
+        border: 1px solid var(--arms-border, #263345);
     }
 
     .chat-message.user-message {
-        color: #ffffff;
-        background: #315b6b;
-        border-color: #315b6b;
+        color: #0b0f17;
+        background: var(--arms-gold, #c5a880);
+        border-color: var(--arms-gold, #c5a880);
+        font-weight: 500;
     }
 
     .chat-message a.chat-link {
-        color: inherit;
+        color: var(--arms-gold, #c5a880);
         font-weight: 600;
         text-decoration: underline;
     }
 
     .chat-message.user-message a.chat-link {
-        color: #ffffff;
+        color: #0b0f17;
     }
 
     .chat-composer {
-        background: var(--arms-surface);
-        border-top: 1px solid var(--arms-border);
+        background: var(--arms-surface, #131924);
+        border-top: 1px solid var(--arms-border, #263345);
     }
 
     .chat-composer .form-control {
-        color: var(--arms-text);
-        background: var(--arms-surface);
-        border-color: var(--arms-border);
+        color: var(--arms-text, #e2e8f0);
+        background: #0b0f17;
+        border-color: var(--arms-border, #263345);
     }
 
-    .chat-composer .form-control::placeholder {
-        color: var(--arms-muted);
-        opacity: 1;
+    .chat-composer .form-control:focus {
+        background: #0b0f17;
+        border-color: var(--arms-gold, #c5a880);
+        color: #e2e8f0;
+        box-shadow: none;
     }
 
     .suggestion-chip {
         cursor: pointer;
         font-size: 0.8rem;
-        border: 1px solid var(--arms-border);
-        background: var(--arms-surface);
-        color: var(--arms-text);
+        border: 1px solid var(--arms-border, #263345);
+        background: #0b0f17;
+        color: var(--arms-muted, #94a3b8);
         border-radius: 4px;
         padding: 0.25rem 0.5rem;
         display: inline-block;
@@ -76,8 +79,44 @@
     }
 
     .suggestion-chip:hover {
-        border-color: #315b6b;
-        background: #e9ecef;
+        border-color: var(--arms-gold, #c5a880);
+        color: #e2e8f0;
+    }
+
+    .lang-pill {
+        cursor: pointer;
+        font-size: 0.75rem;
+        padding: 0.2rem 0.45rem;
+        border: 1px solid var(--arms-border, #263345);
+        background: #0b0f17;
+        color: var(--arms-muted, #94a3b8);
+        border-radius: 2px;
+    }
+
+    .lang-pill.active {
+        background-color: var(--arms-gold, #c5a880);
+        color: #0b0f17;
+        border-color: var(--arms-gold, #c5a880);
+        font-weight: 600;
+    }
+
+    .btn-gold {
+        background-color: var(--arms-gold, #c5a880);
+        border: 1px solid var(--arms-gold, #c5a880);
+        color: #0b0f17;
+        font-weight: 600;
+    }
+    .btn-gold:hover, .btn-gold:focus {
+        background-color: var(--arms-gold-hover, #b3956e);
+        border-color: var(--arms-gold-hover, #b3956e);
+        color: #0b0f17;
+    }
+
+    .typing-loader {
+        display: inline-block;
+        font-size: 0.85rem;
+        color: var(--arms-muted, #94a3b8);
+        font-style: italic;
     }
 </style>
 
@@ -85,22 +124,34 @@
     <div class="row justify-content-center">
         <div class="col-lg-10">
             <div class="card chat-shell border overflow-hidden">
-                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <div class="card-header py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <div>
-                        <h1 class="h5 mb-0">
-                            <i class="fas fa-robot me-2 text-secondary" aria-hidden="true"></i>AI Travel Assistant
-                        </h1>
-                        <small class="text-muted">Instant travel recommendations, flight inquiries, and airline policies</small>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-dark border text-light rounded-0">ARMS 2.0</span>
+                            <h1 class="h5 mb-0 fw-bold text-light">
+                                <i class="fas fa-robot me-2 text-secondary" aria-hidden="true"></i>AI Travel Assistant
+                            </h1>
+                        </div>
+                        <small class="text-muted">Multilingual flight discovery, itinerary orchestration, and policy intelligence</small>
                     </div>
-                    <div>
-                        <a href="{% url 'search-flight' %}" class="btn btn-outline-secondary btn-sm">Flight Search</a>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-1" id="lang-selector">
+                            <span class="small text-muted me-1">Lang:</span>
+                            <button type="button" class="lang-pill active" data-lang="en">EN</button>
+                            <button type="button" class="lang-pill" data-lang="es">ES</button>
+                            <button type="button" class="lang-pill" data-lang="fr">FR</button>
+                            <button type="button" class="lang-pill" data-lang="de">DE</button>
+                            <button type="button" class="lang-pill" data-lang="ja">JA</button>
+                            <button type="button" class="lang-pill" data-lang="hi">HI</button>
+                        </div>
+                        <a href="{% url 'search-flight' %}" class="btn btn-outline-secondary btn-sm rounded-0">Flight Search</a>
                     </div>
                 </div>
                 <div class="card-body chat-body p-0">
                     <div id="chat-window" class="p-3" style="min-height: 420px; max-height: 520px; overflow-y: auto;">
                         <div class="d-flex justify-content-start mb-3">
-                            <div class="chat-message rounded px-3 py-2" style="max-width: 80%;">
-                                Hello. I am your ARMS AI Travel Assistant. I can help you plan trips, find scheduled flights, check baggage and cancellation policies, or track flight statuses. How can I assist you today?
+                            <div class="chat-message rounded px-3 py-2" style="max-width: 85%;">
+                                Hello. I am your ARMS AI Travel Assistant. I can assist with journey planning, flight schedule lookups, baggage and cancellation policies, or live flight tracking. How can I assist your travels today?
                             </div>
                         </div>
                     </div>
@@ -116,8 +167,8 @@
                         <form id="chat-form">
                             {% csrf_token %}
                             <div class="input-group">
-                                <input type="text" id="chat-message" class="form-control" placeholder="Ask: What flights are available from Chennai? or What is the baggage allowance?..." autocomplete="off" required>
-                                <button type="submit" class="btn btn-primary" id="chat-submit-btn">Send</button>
+                                <input type="text" id="chat-message" class="form-control rounded-0" placeholder="Type a travel question, flight inquiry, or baggage rule..." autocomplete="off" required>
+                                <button type="submit" class="btn btn-gold rounded-0 px-4" id="chat-submit-btn">Send</button>
                             </div>
                         </form>
                     </div>
@@ -135,9 +186,19 @@
     const chatForm = document.getElementById('chat-form');
     const chatInput = document.getElementById('chat-message');
     const submitBtn = document.getElementById('chat-submit-btn');
+    let currentLanguage = 'en';
+
+    // Handle Language Selector
+    document.querySelectorAll('.lang-pill').forEach(function(pill) {
+        pill.addEventListener('click', function() {
+            document.querySelectorAll('.lang-pill').forEach(p => p.classList.remove('active'));
+            this.classList.add('active');
+            currentLanguage = this.getAttribute('data-lang');
+            addMessage('Language switched to ' + this.textContent + '.', false);
+        });
+    });
 
     function formatMessageContent(content) {
-        // Safe escaping to prevent XSS
         const div = document.createElement('div');
         div.textContent = content;
         let escaped = div.innerHTML;
@@ -168,6 +229,27 @@
         wrapper.appendChild(bubble);
         chatWindow.appendChild(wrapper);
         chatWindow.scrollTop = chatWindow.scrollHeight;
+        return wrapper;
+    }
+
+    function showLoading() {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'd-flex mb-3 justify-content-start typing-indicator-wrapper';
+        wrapper.id = 'chat-loading-indicator';
+        wrapper.setAttribute('role', 'status');
+
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-message rounded px-3 py-2';
+        bubble.innerHTML = '<span class="typing-loader"><i class="fas fa-spinner fa-spin me-2" aria-hidden="true"></i>Consulting flight inventory and travel intelligence...</span>';
+
+        wrapper.appendChild(bubble);
+        chatWindow.appendChild(wrapper);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    function removeLoading() {
+        const indicator = document.getElementById('chat-loading-indicator');
+        if (indicator) indicator.remove();
     }
 
     function sendMessage(text) {
@@ -175,6 +257,7 @@
         addMessage(text, true);
         chatInput.value = '';
         submitBtn.disabled = true;
+        showLoading();
 
         fetch('{% url "travel-chat-api" %}', {
             method: 'POST',
@@ -182,20 +265,25 @@
                 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
                 'X-CSRFToken': '{{ csrf_token }}'
             },
-            body: new URLSearchParams({ message: text })
+            body: new URLSearchParams({
+                message: text,
+                language: currentLanguage
+            })
         })
         .then(response => response.json())
         .then(data => {
+            removeLoading();
             submitBtn.disabled = false;
             if (data.status === 'success') {
                 addMessage(data.response, false);
             } else {
-                addMessage(data.message || 'Something went wrong.', false);
+                addMessage(data.message || 'Unable to process your request at this time.', false);
             }
         })
         .catch(() => {
+            removeLoading();
             submitBtn.disabled = false;
-            addMessage('I could not process that request right now. Please check your connection and try again.', false);
+            addMessage('Service temporarily unavailable. Please verify your connection or search the flight directory directly.', false);
         });
     }
 

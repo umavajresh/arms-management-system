@@ -62,6 +62,19 @@ urlpatterns = [
     path('save_aircraft',views.save_aircraft,name='save-aircraft'),
     path('delete_aircraft/<int:pk>',views.delete_aircraft,name='delete-aircraft-pk'),
     
+    # Guest booking and confirmation
+    path('booking_confirmation/<str:reference>', views.booking_confirmation, name='booking-confirmation'),
+    path('guest_booking', views.guest_booking, name='guest-booking'),
+    path('save_guest_reservation', views.save_guest_reservation, name='save-guest-reservation'),
+    path('cancel_guest_reservation', views.cancel_guest_reservation, name='cancel-guest-reservation'),
+
+    # Legal and compliance
+    path('terms', views.terms_of_service, name='terms'),
+    path('privacy', views.privacy_policy, name='privacy'),
+
+    # Travel preferences
+    path('update_travel_preferences', views.update_travel_preferences, name='update-travel-preferences'),
+
     # Verification URLs
     path('get_captcha',views.get_captcha,name='get-captcha'),
     path('verify_reservation',views.verify_reservation,name='verify-reservation'),

@@ -1,32 +1,38 @@
 {% load static %}
 <header>
-    <!-- Intro settings -->
     <style>
         #intro {
-            /* Margin to fix overlapping fixed navbar */
             margin-top: 58px;
         }
 
         @media (max-width: 991px) {
             #intro {
-                /* Margin to fix overlapping fixed navbar */
                 margin-top: 45px;
             }
         }
         #uni_modal .modal-sub-footer{
             display:none;
         }
+        .arms-navbar {
+            background-color: var(--arms-surface, #131924) !important;
+            border-bottom: 1px solid var(--arms-border, #263345) !important;
+            box-shadow: none !important;
+        }
+        .navbar-brand-gold {
+            color: var(--arms-gold, #c5a880) !important;
+            font-weight: 700;
+            letter-spacing: 0.05rem;
+        }
     </style>
 
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top border-bottom">
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top arms-navbar">
         <div class="container">
             <!-- Navbar brand -->
-            <a class="navbar-brand" target="_blank" href="./">
-                {% comment %} <img src="{{ MEDIA_URL }}/default/logo.png" height="16" alt="{{ MEDIA_URL }}" loading="lazy" class="bg-white px-1 py-1" style="margin-top: -3px;" /> {% endcomment %}
-                <b>{{system_name}}</b>
+            <a class="navbar-brand navbar-brand-gold" href="{% url 'public-page' %}">
+                ARMS 2.0
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarExample01" aria-controls="navbarExample01" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler rounded-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarExample01" aria-controls="navbarExample01" aria-expanded="false" aria-label="Toggle navigation">
                 <i class="fas fa-bars"></i>
             </button>
             <div class="collapse navbar-collapse" id="navbarExample01">
@@ -38,22 +44,25 @@
                             <a class="nav-link" aria-current="page" href="{% url 'home-page' %}">Admin Dashboard</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" aria-current="page" href="{% url 'airline-page' %}">Airline</a>
+                            <a class="nav-link" href="{% url 'airline-page' %}">Airline</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" aria-current="page" href="{% url 'airport-page' %}">Airport</a>
+                            <a class="nav-link" href="{% url 'airport-page' %}">Airport</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" aria-current="page" href="{% url 'aircraft-page' %}">Aircraft</a>
+                            <a class="nav-link" href="{% url 'aircraft-page' %}">Aircraft</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" aria-current="page" href="{% url 'flight-page' %}">Flight</a>
+                            <a class="nav-link" href="{% url 'flight-page' %}">Flight</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" aria-current="page" href="/admin/upcoming-flights/">Upcoming Flights</a>
+                            <a class="nav-link" href="/admin/upcoming-flights/">Upcoming Flights</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" aria-current="page" href="{% url 'reservation' %}">Reservation</a>
+                            <a class="nav-link" href="{% url 'reservation' %}">Reservation</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'flight-tracker' %}">Flight Radar</a>
                         </li>
                         {% else %}
                         <!-- Regular User Navigation -->
@@ -61,29 +70,52 @@
                             <a class="nav-link" aria-current="page" href="{% url 'user-dashboard' %}">Dashboard</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" aria-current="page" href="{% url 'search-flight' %}">Search Flights</a>
+                            <a class="nav-link" href="{% url 'search-flight' %}">Search Flights</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" aria-current="page" href="{% url 'upcoming-flights' %}">Upcoming Flights</a>
+                            <a class="nav-link" href="{% url 'upcoming-flights' %}">Upcoming Flights</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" aria-current="page" href="{% url 'user-reservations' %}">My Bookings</a>
+                            <a class="nav-link" href="{% url 'user-reservations' %}">My Bookings</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'flight-tracker' %}">Flight Radar</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'travel-chat' %}">AI Travel Agent</a>
                         </li>
                         {% endif %}
+                    {% else %}
+                        <!-- Guest Navigation -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'search-flight' %}">Search Flights</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'flight-tracker' %}">Live Flight Radar</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'travel-chat' %}">AI Travel Agent</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'guest-booking' %}">Guest Booking Lookup</a>
+                        </li>
                     {% endif %}
                 </ul>
 
-                <ul class="navbar-nav d-flex flex-row">
+                <ul class="navbar-nav d-flex flex-row align-items-center">
                     {% if user.id %}
                     <li class="nav-item">
-                        <a class="nav-link"  href="{% url 'profile-page' %}"><b>Howdy, {{user.username}}</b></a>
+                        <a class="nav-link" href="{% url 'profile-page' %}">Howdy, {{user.username}}</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" aria-current="page" href="{% url 'logout' %}">Logout</a>
+                    <li class="nav-item ms-2">
+                        <a class="nav-link btn btn-sm btn-outline-secondary rounded-0 px-2 py-1" aria-current="page" href="{% url 'logout' %}">Logout</a>
                     </li>
                     {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" aria-current="page" href="{% url 'login-page' %}">Login</a>
+                        <a class="nav-link" aria-current="page" href="{% url 'login-page' %}">Sign In</a>
+                    </li>
+                    <li class="nav-item ms-2">
+                        <a class="nav-link btn btn-sm rounded-0 px-3 py-1" style="background-color: var(--arms-gold, #c5a880); color: #0b0f17; font-weight: 600;" href="{% url 'register-page' %}">Register</a>
                     </li>
                     {% endif %}
                 </ul>
@@ -93,21 +125,7 @@
     <!-- Navbar -->
 
     <!-- Jumbotron -->
-    <div id="intro" class="pt-2 text-center bg-light">
-        <!-- <h1 class="mb-3 h2">Learn Bootstrap 5 with MDB</h1>
-        <p class="mb-3">Best & free guide of responsive web design</p>
-        <a class="btn btn-primary m-2" href="https://www.youtube.com/watch?v=c9B4TPnak1A" role="button" rel="nofollow" target="_blank">Start tutorial</a>
-        <a class="btn btn-primary m-2" href="https://mdbootstrap.com/docs/standard/" target="_blank" role="button">Download MDB UI KIT</a> -->
+    <div id="intro" class="text-center bg-light">
     </div>
     <!-- Jumbotron -->
 </header>
-<script>
-    $(function() {
-        $('#topNav .nav-link').each(function() {
-            var current = '{{ request.get_full_path | urlencode }}'
-            if (current == $(this).attr('href')) {
-                $(this).parent().addClass('active')
-            }
-        })
-    })
-</script>

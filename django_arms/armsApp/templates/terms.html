@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block pageContent %}
+<style>
+    .legal-shell {
+        background-color: var(--arms-surface, #131924);
+        border: 1px solid var(--arms-border, #263345);
+        border-radius: 6px;
+        padding: clamp(1.5rem, 4vw, 3rem);
+        color: var(--arms-text, #e2e8f0);
+    }
+    .legal-shell h1, .legal-shell h2, .legal-shell h3 {
+        color: var(--arms-gold, #c5a880);
+    }
+    .legal-shell p, .legal-shell li {
+        color: var(--arms-muted, #94a3b8);
+        line-height: 1.7;
+    }
+    .legal-section {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--arms-border, #263345);
+    }
+    .legal-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-12">
+            <div class="legal-shell">
+                <header class="mb-4 pb-3 border-bottom border-secondary border-opacity-25">
+                    <h1 class="h3 fw-bold mb-2">Terms of Service</h1>
+                    <p class="small text-muted mb-0">Effective Date: October 2026. Version 2.0</p>
+                </header>
+
+                <section class="legal-section">
+                    <h2 class="h5 fw-semibold mb-2">1. Acceptance of Terms</h2>
+                    <p>
+                        By accessing or using the Airline Reservation Management System (ARMS 2.0), whether as a registered passenger, administrative user, or guest visitor, you acknowledge that you have read, understood, and agreed to be bound by these Terms of Service and applicable aviation laws.
+                    </p>
+                </section>
+
+                <section class="legal-section">
+                    <h2 class="h5 fw-semibold mb-2">2. Flight Inventory and Reservation Nature</h2>
+                    <p>
+                        All schedules, flight details, and seat inventories displayed on ARMS represent scheduled flights within the carrier network. Submitting a reservation request generates an internal ARMS reservation reference.
+                    </p>
+                    <p>
+                        A reservation remains in Pending status until confirmed and approved by flight operations. Once approved, the booking constitutes a confirmed airline carriage reservation. Final boarding passes and baggage check receipts are issued upon identity verification at the airport counter or via web check-in.
+                    </p>
+                </section>
+
+                <section class="legal-section">
+                    <h2 class="h5 fw-semibold mb-2">3. Guest Mode and Self-Service Bookings</h2>
+                    <p>
+                        ARMS provides unauthenticated guest booking capabilities. When booking as a guest:
+                    </p>
+                    <ul>
+                        <li>You must provide accurate passenger names exactly matching government-issued photo identification.</li>
+                        <li>A unique, unguessable booking reference is generated for each transaction.</li>
+                        <li>Guest booking lookup and management requires providing both the booking reference and verified passenger credentials (email address or surname).</li>
+                        <li>You are responsible for safeguarding your booking reference code.</li>
+                    </ul>
+                </section>
+
+                <section class="legal-section">
+                    <h2 class="h5 fw-semibold mb-2">4. Cancellation and Modification Rules</h2>
+                    <p>
+                        Passengers may cancel reservations through self-service portals (My Bookings or Guest Booking Lookup) subject to the following rules:
+                    </p>
+                    <ul>
+                        <li>Cancellations are permitted only for flights that have not yet departed.</li>
+                        <li>Once a flight departure time has passed according to official telemetry, self-service cancellation is disabled.</li>
+                        <li>Cancelled reservations release allocated seats back to the aircraft inventory.</li>
+                    </ul>
+                </section>
+
+                <section class="legal-section">
+                    <h2 class="h5 fw-semibold mb-2">5. AI Travel Assistant Disclosures</h2>
+                    <p>
+                        The ARMS AI Travel Assistant provides natural language travel discovery, itinerary suggestions, and policy guidance:
+                    </p>
+                    <ul>
+                        <li>Flight numbers, departure times, and seat pricing labeled as Verified Inventory reflect active system records.</li>
+                        <li>Budget guidance, hotel spending estimates, and destination activity plans are simulated planning estimates and do not constitute fixed binding offers.</li>
+                        <li>Passengers must verify visa, entry requirements, and health documentation with respective embassy authorities before departure.</li>
+                    </ul>
+                </section>
+
+                <section class="legal-section">
+                    <h2 class="h5 fw-semibold mb-2">6. Passenger Conduct and Security</h2>
+                    <p>
+                        Users must not attempt automated scraping, injection attacks, unauthorized seat hoarding, or credential enumeration. Violations will result in immediate termination of account access and cancellation of associated reservations.
+                    </p>
+                </section>
+
+                <div class="d-flex justify-content-between align-items-center pt-3">
+                    <a href="{% url 'public-page' %}" class="btn btn-sm btn-outline-secondary rounded-0">Return to Home</a>
+                    <a href="{% url 'privacy' %}" class="btn btn-sm btn-outline-light rounded-0">Review Privacy Policy</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock pageContent %}

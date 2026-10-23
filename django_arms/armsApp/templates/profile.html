@@ -4,9 +4,9 @@
     <div class="row justify-content-center">
         <div class="col-lg-8 col-md-10 col-12">
             <!-- Account Details Card -->
-            <div class="card rounded-0 mb-4" style="background-color: var(--arms-surface, #f8f9f6); border: 1px solid var(--arms-border, #d4dad6); box-shadow: none;">
-                <div class="card-header" style="background-color: var(--arms-surface, #f8f9f6); border-bottom: 1px solid var(--arms-border, #d4dad6);">
-                    <div class="h5 card-title fw-bold mb-0 text-dark">My Profile</div>
+            <div class="card rounded-0 mb-4" style="background-color: var(--arms-surface, #131924); border: 1px solid var(--arms-border, #263345); box-shadow: none;">
+                <div class="card-header" style="background-color: var(--arms-card, #182230); border-bottom: 1px solid var(--arms-border, #263345);">
+                    <div class="h5 card-title fw-bold mb-0 text-light">My Profile</div>
                 </div>
                 <div class="card-body">
                     <div class="container-fluid">
@@ -14,46 +14,109 @@
                             <div class="col-md-10">
                                 <dl class="row mb-0">
                                     <dt class="col-sm-4 text-muted">Full Name</dt>
-                                    <dd class="col-sm-8">{{ user.first_name }} {{ user.last_name }}</dd>
+                                    <dd class="col-sm-8 text-light">{{ user.first_name }} {{ user.last_name }}</dd>
 
                                     <dt class="col-sm-4 text-muted">Email</dt>
-                                    <dd class="col-sm-8">{{ user.email }}</dd>
+                                    <dd class="col-sm-8 text-light">{{ user.email }}</dd>
 
                                     <dt class="col-sm-4 text-muted">Username</dt>
-                                    <dd class="col-sm-8">{{ user.username }}</dd>
+                                    <dd class="col-sm-8 text-light">{{ user.username }}</dd>
 
                                     {% if user_profile %}
                                     <dt class="col-sm-4 text-muted">User ID</dt>
-                                    <dd class="col-sm-8">{{ user_profile.custom_id }}</dd>
+                                    <dd class="col-sm-8 text-light">{{ user_profile.custom_id }}</dd>
 
                                     <dt class="col-sm-4 text-muted">Mobile</dt>
-                                    <dd class="col-sm-8">{{ user_profile.mobile|default:"Not specified" }}</dd>
+                                    <dd class="col-sm-8 text-light">{{ user_profile.mobile|default:"Not specified" }}</dd>
 
                                     <dt class="col-sm-4 text-muted">Account Role</dt>
-                                    <dd class="col-sm-8">{{ user_profile.get_user_type_display|default:user_profile.user_type|capfirst }}</dd>
+                                    <dd class="col-sm-8 text-light">{{ user_profile.get_user_type_display|default:user_profile.user_type|capfirst }}</dd>
                                     {% endif %}
                                 </dl>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="card-footer" style="background-color: var(--arms-surface, #f8f9f6); border-top: 1px solid var(--arms-border, #d4dad6);">
+                <div class="card-footer" style="background-color: var(--arms-card, #182230); border-top: 1px solid var(--arms-border, #263345);">
                     <div class="d-flex w-100 justify-content-end gap-2">
-                        <a href="{% url 'update-password' %}" class="btn btn-light border btn-sm rounded-0">Update Password</a>
-                        <a href="{% url 'update-profile' %}" class="btn btn-primary btn-sm rounded-0" style="background-color: var(--arms-primary, #315b6b); border-color: var(--arms-primary, #315b6b);">Update Profile</a>
+                        <a href="{% url 'update-password' %}" class="btn btn-outline-secondary btn-sm rounded-0">Update Password</a>
+                        <a href="{% url 'update-profile' %}" class="btn btn-sm rounded-0" style="background-color: var(--arms-gold, #c5a880); color: #0b0f17; font-weight: 600;">Update Profile</a>
                     </div>
                 </div>
             </div>
 
+            <!-- Travel Preferences Card -->
+            <div class="card rounded-0 mb-4" style="background-color: var(--arms-surface, #131924); border: 1px solid var(--arms-border, #263345); box-shadow: none;">
+                <div class="card-header" style="background-color: var(--arms-card, #182230); border-bottom: 1px solid var(--arms-border, #263345);">
+                    <div class="h5 card-title fw-bold mb-0 text-light">AI Travel Assistant Preferences</div>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{% url 'update-travel-preferences' %}">
+                        {% csrf_token %}
+                        <div class="row g-3">
+                            <div class="col-md-6 col-12">
+                                <label for="preferred_language" class="form-label small text-muted">Preferred Conversation Language</label>
+                                <select class="form-select rounded-0" id="preferred_language" name="preferred_language" style="background-color: #0b0f17; border-color: var(--arms-border, #263345); color: #e2e8f0;">
+                                    <option value="en" {% if travel_preference.preferred_language == 'en' %}selected{% endif %}>English (EN)</option>
+                                    <option value="es" {% if travel_preference.preferred_language == 'es' %}selected{% endif %}>Spanish (Español)</option>
+                                    <option value="fr" {% if travel_preference.preferred_language == 'fr' %}selected{% endif %}>French (Français)</option>
+                                    <option value="de" {% if travel_preference.preferred_language == 'de' %}selected{% endif %}>German (Deutsch)</option>
+                                    <option value="ja" {% if travel_preference.preferred_language == 'ja' %}selected{% endif %}>Japanese (日本語)</option>
+                                    <option value="hi" {% if travel_preference.preferred_language == 'hi' %}selected{% endif %}>Hindi (हिन्दी)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label for="preferred_currency" class="form-label small text-muted">Display Currency</label>
+                                <select class="form-select rounded-0" id="preferred_currency" name="preferred_currency" style="background-color: #0b0f17; border-color: var(--arms-border, #263345); color: #e2e8f0;">
+                                    <option value="USD" {% if travel_preference.preferred_currency == 'USD' %}selected{% endif %}>USD ($)</option>
+                                    <option value="EUR" {% if travel_preference.preferred_currency == 'EUR' %}selected{% endif %}>EUR (€)</option>
+                                    <option value="GBP" {% if travel_preference.preferred_currency == 'GBP' %}selected{% endif %}>GBP (£)</option>
+                                    <option value="JPY" {% if travel_preference.preferred_currency == 'JPY' %}selected{% endif %}>JPY (¥)</option>
+                                    <option value="INR" {% if travel_preference.preferred_currency == 'INR' %}selected{% endif %}>INR (₹)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label for="preferred_seat_class" class="form-label small text-muted">Default Travel Class</label>
+                                <select class="form-select rounded-0" id="preferred_seat_class" name="preferred_seat_class" style="background-color: #0b0f17; border-color: var(--arms-border, #263345); color: #e2e8f0;">
+                                    <option value="Economy" {% if travel_preference.preferred_seat_class == 'Economy' %}selected{% endif %}>Economy</option>
+                                    <option value="Business" {% if travel_preference.preferred_seat_class == 'Business' %}selected{% endif %}>Business Class</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label for="budget_level" class="form-label small text-muted">Planning Budget Level</label>
+                                <select class="form-select rounded-0" id="budget_level" name="budget_level" style="background-color: #0b0f17; border-color: var(--arms-border, #263345); color: #e2e8f0;">
+                                    <option value="economy" {% if travel_preference.budget_level == 'economy' %}selected{% endif %}>Budget / Economy</option>
+                                    <option value="moderate" {% if travel_preference.budget_level == 'moderate' %}selected{% endif %}>Moderate</option>
+                                    <option value="luxury" {% if travel_preference.budget_level == 'luxury' %}selected{% endif %}>Luxury</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label for="dietary_preference" class="form-label small text-muted">In-Flight Meal Preference</label>
+                                <input type="text" class="form-control rounded-0" id="dietary_preference" name="dietary_preference" value="{{ travel_preference.dietary_preference|default:'' }}" placeholder="e.g. Vegetarian, Halal, Gluten-Free" style="background-color: #0b0f17; border-color: var(--arms-border, #263345); color: #e2e8f0;">
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label for="interests" class="form-label small text-muted">Travel Interests</label>
+                                <input type="text" class="form-control rounded-0" id="interests" name="interests" value="{{ travel_preference.interests|default:'' }}" placeholder="e.g. beach, culture, museums, adventure" style="background-color: #0b0f17; border-color: var(--arms-border, #263345); color: #e2e8f0;">
+                            </div>
+                            <div class="col-12 text-end">
+                                <button type="submit" class="btn btn-sm rounded-0 px-3" style="background-color: var(--arms-gold, #c5a880); color: #0b0f17; font-weight: 600;">
+                                    Save Preferences
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <!-- Two-Factor Authentication Security Card -->
-            <div class="card rounded-0" style="background-color: var(--arms-surface, #f8f9f6); border: 1px solid var(--arms-border, #d4dad6); box-shadow: none;">
-                <div class="card-header" style="background-color: var(--arms-surface, #f8f9f6); border-bottom: 1px solid var(--arms-border, #d4dad6);">
-                    <div class="h5 card-title fw-bold mb-0 text-dark">Security and Two-Factor Authentication</div>
+            <div class="card rounded-0" style="background-color: var(--arms-surface, #131924); border: 1px solid var(--arms-border, #263345); box-shadow: none;">
+                <div class="card-header" style="background-color: var(--arms-card, #182230); border-bottom: 1px solid var(--arms-border, #263345);">
+                    <div class="h5 card-title fw-bold mb-0 text-light">Security and Two-Factor Authentication</div>
                 </div>
                 <div class="card-body">
                     <div class="row align-items-center">
                         <div class="col-md-8">
-                            <h2 class="h6 fw-semibold text-dark mb-1">Two-Factor Authentication (OTP)</h2>
+                            <h2 class="h6 fw-semibold text-light mb-1">Two-Factor Authentication (OTP)</h2>
                             <p class="text-muted small mb-2">
                                 Require a 6-digit one-time passcode generated for your account whenever you sign in. This protects against unauthorized access.
                             </p>
@@ -74,7 +137,7 @@
                                     Disable 2FA
                                 </button>
                                 {% else %}
-                                <button type="submit" class="btn btn-primary btn-sm rounded-0" style="background-color: var(--arms-primary, #315b6b); border-color: var(--arms-primary, #315b6b);">
+                                <button type="submit" class="btn btn-sm rounded-0" style="background-color: var(--arms-gold, #c5a880); color: #0b0f17; font-weight: 600;">
                                     Enable 2FA
                                 </button>
                                 {% endif %}

@@ -1,11 +1,12 @@
-# Django ARMS
+# Django ARMS 2.0: AI-Powered Airline Reservation and Cinematic Travel Management System
 
-Airline Reservation Management System (ARMS) is a Django web application for maintaining airline operations and letting passengers search flights, select seats, and submit reservation requests. It includes separate passenger and administrator workflows, recurring flight schedules, booking notifications, a flight tracker, and a travel-assistant interface.
+ARMS 2.0 is an intelligent airline reservation and cinematic travel management platform built on Django. It combines verified airline inventory management, real-time flight tracking telemetry, unauthenticated guest booking workflows, two-factor authentication security, and an advanced multilingual conversational travel assistant.
 
 Project demonstration: [YouTube video](https://youtu.be/EJkb_slY4gU?si=LH_LaqsJEbSqSGjS)
 
 ## Contents
 
+- [What's New in ARMS 2.0](#whats-new-in-arms-20)
 - [Features](#features)
 - [How the system works](#how-the-system-works)
 - [Technology](#technology)
@@ -15,6 +16,16 @@ Project demonstration: [YouTube video](https://youtu.be/EJkb_slY4gU?si=LH_LaqsJE
 - [Configuration](#configuration)
 - [Deployment](#deployment)
 - [Security and operational notes](#security-and-operational-notes)
+
+## What's New in ARMS 2.0
+
+- **Dark Cinematic Visual Direction**: Built on a sophisticated obsidian and champagne gold aesthetic (`#0b0f17`, `#131924`, `#c5a880`) adhering to 30 strict design restrictions (0 emojis, 0 em dashes, 0 Lucide, 0 drop shadows, 0 harsh gradients, 4-column balanced grid layouts).
+- **Guest Booking and Management Mode**: Unauthenticated visitors can browse schedules, select seats, complete bookings, receive unguessable references (`GUEST-XXXX-XXXX`), and retrieve or manage their itineraries via the Guest Lookup Portal.
+- **Multilingual AI Travel Assistant**: Conversational agent supporting English, Spanish, French, German, Japanese, and Hindi, equipped with controlled server-side tools (`search_flights`, `get_flight_details`, `lookup_reservation`, `policy_faq`) and clear inventory vs simulation disclosures.
+- **Two-Factor Authentication (2FA / OTP)**: Timing-safe one-time passcode verification for passenger and administrator logins with 5-attempt rate-limiting lockout.
+- **User Travel Preferences**: Persistent preferences (seat class, language, currency, meal preferences, travel style) for authenticated passengers.
+- **Legitimate Compliance**: Built-in Terms of Service (`/terms`) and Privacy Policy (`/privacy`) pages integrated into the navigation and footer.
+- **Comprehensive Test Coverage**: Expanded automated test suite with 54 passing tests covering authentication, 2FA, guest reservations, IDOR protection, flight tracking, and AI tool orchestration.
 
 ## Features
 

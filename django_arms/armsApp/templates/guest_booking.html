@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block pageContent %}
+<style>
+    .guest-portal-card {
+        background-color: var(--arms-surface, #131924);
+        border: 1px solid var(--arms-border, #263345);
+        border-radius: 6px;
+        color: var(--arms-text, #e2e8f0);
+    }
+    .guest-portal-header {
+        background-color: var(--arms-card, #182230);
+        border-bottom: 1px solid var(--arms-border, #263345);
+        padding: 1.5rem 2rem;
+    }
+    .btn-gold {
+        background-color: var(--arms-gold, #c5a880);
+        border: 1px solid var(--arms-gold, #c5a880);
+        color: #0b0f17;
+        font-weight: 600;
+    }
+    .btn-gold:hover, .btn-gold:focus {
+        background-color: var(--arms-gold-hover, #b3956e);
+        border-color: var(--arms-gold-hover, #b3956e);
+        color: #0b0f17;
+    }
+    .form-control-dark {
+        background-color: #0b0f17;
+        border: 1px solid var(--arms-border, #263345);
+        color: #e2e8f0;
+    }
+    .form-control-dark:focus {
+        background-color: #0b0f17;
+        border-color: var(--arms-gold, #c5a880);
+        color: #e2e8f0;
+        box-shadow: none;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-12">
+            <div class="card guest-portal-card mb-4">
+                <div class="guest-portal-header">
+                    <span class="badge bg-secondary rounded-0 text-uppercase mb-2">Guest Services</span>
+                    <h1 class="h4 fw-bold mb-1 text-light">Guest Reservation Lookup</h1>
+                    <p class="small text-muted mb-0">Retrieve, review, or manage your airline reservation without an account.</p>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" action="{% url 'guest-booking' %}">
+                        {% csrf_token %}
+                        <div class="row g-3">
+                            <div class="col-md-6 col-12">
+                                <label for="reference" class="form-label small fw-semibold text-light">Booking Reference</label>
+                                <input
+                                    type="text"
+                                    class="form-control form-control-dark rounded-0"
+                                    id="reference"
+                                    name="reference"
+                                    placeholder="e.g. GUEST-A1B2-C3D4"
+                                    required
+                                    value="{{ request.POST.reference|default:'' }}"
+                                    autocomplete="off"
+                                >
+                                <div class="form-text small text-muted">Found on your booking confirmation receipt.</div>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label for="verification" class="form-label small fw-semibold text-light">Passenger Email or Surname</label>
+                                <input
+                                    type="text"
+                                    class="form-control form-control-dark rounded-0"
+                                    id="verification"
+                                    name="verification"
+                                    placeholder="e.g. passenger@example.com or Smith"
+                                    required
+                                    value="{{ request.POST.verification|default:'' }}"
+                                    autocomplete="off"
+                                >
+                                <div class="form-text small text-muted">Used to securely verify passenger authorization.</div>
+                            </div>
+                            <div class="col-12 text-end">
+                                <button type="submit" class="btn btn-gold rounded-0 px-4">
+                                    <i class="fas fa-search me-1" aria-hidden="true"></i> Find Reservation
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {% if found_reservation %}
+            <!-- Found Reservation Card -->
+            <div class="card guest-portal-card">
+                <div class="guest-portal-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <span class="small text-muted">Booking Reference:</span>
+                        <span class="fw-bold ms-1" style="color: var(--arms-gold, #c5a880);">{{ found_reservation.booking_reference }}</span>
+                    </div>
+                    <div>
+                        <span class="badge bg-secondary rounded-0">{{ found_reservation.get_status_display_text.0 }}</span>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6 col-12">
+                            <div class="small text-muted">Passenger Name</div>
+                            <div class="fw-semibold text-light">{{ found_reservation.first_name }} {{ found_reservation.last_name }}</div>
+                            <div class="small text-muted mt-2">Contact Details</div>
+                            <div class="text-secondary small">{{ found_reservation.email }} &bull; {{ found_reservation.contact }}</div>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <div class="small text-muted">Flight and Route</div>
+                            <div class="fw-semibold text-light">{{ found_reservation.flight.code }} ({{ found_reservation.flight.airline.name }})</div>
+                            <div class="small text-secondary">{{ found_reservation.flight.from_airport.code }} to {{ found_reservation.flight.to_airport.code }}</div>
+                            <div class="small text-muted mt-2">Seat Assignment</div>
+                            <div class="text-secondary small">{{ found_reservation.seat_number|default:"Will be assigned at check-in" }} ({{ found_reservation.get_type_display }})</div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 mb-4 border rounded-0" style="background-color: #0b0f17; border-color: var(--arms-border, #263345) !important;">
+                        <div class="row g-2 small">
+                            <div class="col-sm-6 col-12">
+                                <span class="text-muted">Departure:</span>
+                                <span class="text-light ms-1">{{ found_reservation.flight.departure|date:"D, M d, Y - H:i" }}</span>
+                            </div>
+                            <div class="col-sm-6 col-12 text-sm-end">
+                                <span class="text-muted">Arrival:</span>
+                                <span class="text-light ms-1">{{ found_reservation.flight.estimated_arrival|date:"D, M d, Y - H:i" }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top border-secondary border-opacity-25">
+                        <a href="{% url 'booking-confirmation' found_reservation.booking_reference %}" class="btn btn-sm btn-outline-light rounded-0">
+                            <i class="fas fa-file-invoice me-1" aria-hidden="true"></i> View Full Itinerary
+                        </a>
+
+                        {% if can_cancel %}
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-0" id="cancelGuestBtn">
+                            Cancel Reservation
+                        </button>
+                        {% else %}
+                        <span class="small text-muted">{{ found_reservation.get_cancellation_status }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if can_cancel %}
+            <script>
+                $(function() {
+                    $('#cancelGuestBtn').click(function() {
+                        if (!confirm("Are you sure you want to cancel this reservation? This action cannot be undone.")) return;
+                        start_loader();
+                        $.ajax({
+                            headers: { "X-CSRFToken": '{{ csrf_token }}' },
+                            url: "{% url 'cancel-guest-reservation' %}",
+                            method: "POST",
+                            data: {
+                                reference: "{{ found_reservation.booking_reference }}",
+                                verification: "{{ request.POST.verification|escapejs }}"
+                            },
+                            dataType: "json",
+                            success: function(resp) {
+                                end_loader();
+                                if (resp.status === 'success') {
+                                    alert(resp.msg);
+                                    location.reload();
+                                } else {
+                                    alert(resp.msg || "An error occurred while cancelling.");
+                                }
+                            },
+                            error: function(err) {
+                                end_loader();
+                                alert("Failed to cancel reservation. Please verify your details.");
+                            }
+                        });
+                    });
+                });
+            </script>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock pageContent %}

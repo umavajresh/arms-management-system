@@ -129,14 +129,14 @@
                                             <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
                                                 <div class="mb-3">
                                                     <label for="contact" class="control-label">Contact Number <span class="text-danger">*</span></label>
-                                                    <input type="text" id="contact" name="contact" class="form-control form-control-sm rounded-0" value="" required>
+                                                    <input type="text" id="contact" name="contact" class="form-control form-control-sm rounded-0" value="{% if request.user.profile.mobile %}{{ request.user.profile.mobile }}{% endif %}" required>
                                                     <small class="text-muted">This contact will be used for all passengers in this booking</small>
                                                 </div>
                                             </div>
                                             <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
                                                 <div class="mb-3">
                                                     <label for="email" class="control-label">Email Address <span class="text-danger">*</span></label>
-                                                    <input type="email" id="email" name="email" class="form-control form-control-sm rounded-0" value="" required>
+                                                    <input type="email" id="email" name="email" class="form-control form-control-sm rounded-0" value="{% if request.user.email %}{{ request.user.email }}{% endif %}" required>
                                                     <small class="text-muted">Booking confirmation will be sent to this email</small>
                                                 </div>
                                             </div>
@@ -151,7 +151,12 @@
                                 </div>
 
                                 <div class="text-center mb-3">
+                                    {% if request.user.is_authenticated %}
                                     <button type="button" class="btn btn-primary btn-lg w-100" data-bs-toggle="modal" data-bs-target="#verificationModal">Submit Reservation</button>
+                                    {% else %}
+                                    <input type="hidden" name="is_guest" value="1">
+                                    <button type="button" class="btn btn-primary btn-lg w-100" id="guest-submit-btn">Complete Guest Reservation</button>
+                                    {% endif %}
                                 </div>
                             </form>
                         </div>
@@ -234,6 +239,16 @@
             });
         }
 
+        // Handle guest direct submission
+        $('#guest-submit-btn').click(function() {
+            var reserveForm = $('#reserve-form')[0];
+            if (!reserveForm.checkValidity()) {
+                reserveForm.reportValidity();
+                return false;
+            }
+            submitReservation();
+        });
+
         // Handle verification and submission
         $('#confirm-reservation').click(function() {
             var reserveForm = $('#reserve-form')[0];
@@ -315,7 +330,11 @@
                 },
                 success: function(resp) {
                     if (typeof resp == 'object' && resp.status == 'success') {
-                        location.reload()
+                        if (resp.redirect) {
+                            location.href = resp.redirect;
+                        } else {
+                            location.reload();
+                        }
                     } else if (resp.status == 'failed' && !!resp.msg) {
                         el.html(resp.msg)
                     } else {
