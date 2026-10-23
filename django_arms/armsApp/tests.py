@@ -1213,4 +1213,40 @@ class MultilingualAndToolChatbotTests(TestCase):
         self.assertEqual(result['code'], 'SK101')
         self.assertEqual(result['airline'], 'Skyline Air')
 
+    def test_chatbot_greeting_response_does_not_default_to_goa(self):
+        response = get_travel_response("Hello")
+        self.assertIn("Welcome to", response)
+        self.assertNotIn("Suggested Goa itinerary", response)
+
+    def test_chatbot_destination_specific_guide(self):
+        tokyo_resp = get_travel_response("Tell me about Tokyo")
+        self.assertIn("Tokyo", tokyo_resp)
+        self.assertIn("Shibuya", tokyo_resp)
+
+        paris_resp = get_travel_response("Trip to Paris")
+        self.assertIn("Paris", paris_resp)
+        self.assertIn("Eiffel Tower", paris_resp)
+
+    def test_ai_settings_api_actions(self):
+        client = Client()
+        # Test save settings
+        save_resp = client.post(reverse('travel-chat-api'), {
+            'action': 'save_ai_settings',
+            'api_key': 'sk-or-v1-testkey123456789',
+            'provider': 'openrouter',
+            'model': 'meta-llama/llama-3.3-70b-instruct:free',
+        })
+        self.assertEqual(save_resp.status_code, 200)
+        self.assertEqual(save_resp.json()['status'], 'success')
+
+        # Test get status
+        status_resp = client.post(reverse('travel-chat-api'), {
+            'action': 'get_ai_status',
+        })
+        self.assertEqual(status_resp.status_code, 200)
+        status_data = status_resp.json()
+        self.assertTrue(status_data['has_key'])
+        self.assertEqual(status_data['provider'], 'openrouter')
+
+
 

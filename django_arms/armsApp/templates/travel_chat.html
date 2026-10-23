@@ -9,7 +9,7 @@
 
     .chat-shell {
         border: 1px solid var(--arms-border, #263345);
-        background: var(--arms-surface, #131924);
+        background: rgba(19, 25, 36, 0.95);
         border-radius: 6px;
     }
 
@@ -20,13 +20,14 @@
     }
 
     .chat-body {
-        background: #0b0f17;
+        background: rgba(11, 15, 23, 0.92);
     }
 
     .chat-message {
         color: var(--arms-text, #e2e8f0);
         background: var(--arms-surface, #131924);
         border: 1px solid var(--arms-border, #263345);
+        white-space: pre-line;
     }
 
     .chat-message.user-message {
@@ -34,6 +35,7 @@
         background: var(--arms-gold, #c5a880);
         border-color: var(--arms-gold, #c5a880);
         font-weight: 500;
+        white-space: normal;
     }
 
     .chat-message a.chat-link {
@@ -118,6 +120,32 @@
         color: var(--arms-muted, #94a3b8);
         font-style: italic;
     }
+
+    .ai-status-badge {
+        font-size: 0.75rem;
+        border: 1px solid var(--arms-border, #263345);
+        padding: 0.2rem 0.5rem;
+        background: #0b0f17;
+        color: var(--arms-muted, #94a3b8);
+    }
+    .ai-status-badge.connected {
+        border-color: #38a169;
+        color: #68d391;
+    }
+
+    .modal-content-dark {
+        background: var(--arms-surface, #131924);
+        border: 1px solid var(--arms-border, #263345);
+        color: var(--arms-text, #e2e8f0);
+    }
+    .modal-content-dark .modal-header {
+        background: var(--arms-card, #182230);
+        border-bottom: 1px solid var(--arms-border, #263345);
+    }
+    .modal-content-dark .modal-footer {
+        background: var(--arms-card, #182230);
+        border-top: 1px solid var(--arms-border, #263345);
+    }
 </style>
 
 <div class="container py-4">
@@ -131,8 +159,9 @@
                             <h1 class="h5 mb-0 fw-bold text-light">
                                 <i class="fas fa-robot me-2 text-secondary" aria-hidden="true"></i>AI Travel Assistant
                             </h1>
+                            <span id="active-engine-badge" class="ai-status-badge rounded-1 ms-2">Engine: ARMS Neural Brain</span>
                         </div>
-                        <small class="text-muted">Multilingual flight discovery, itinerary orchestration, and policy intelligence</small>
+                        <small class="text-muted">Multilingual flight discovery, itinerary orchestration, and open-source AI intelligence</small>
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <div class="d-flex align-items-center gap-1" id="lang-selector">
@@ -144,6 +173,9 @@
                             <button type="button" class="lang-pill" data-lang="ja">JA</button>
                             <button type="button" class="lang-pill" data-lang="hi">HI</button>
                         </div>
+                        <button type="button" class="btn btn-outline-warning btn-sm rounded-0" data-bs-toggle="modal" data-bs-target="#aiSettingsModal">
+                            <i class="fas fa-sliders-h me-1" aria-hidden="true"></i> AI Key & Model
+                        </button>
                         <a href="{% url 'search-flight' %}" class="btn btn-outline-secondary btn-sm rounded-0">Flight Search</a>
                     </div>
                 </div>
@@ -151,18 +183,20 @@
                     <div id="chat-window" class="p-3" style="min-height: 420px; max-height: 520px; overflow-y: auto;">
                         <div class="d-flex justify-content-start mb-3">
                             <div class="chat-message rounded px-3 py-2" style="max-width: 85%;">
-                                Hello. I am your ARMS AI Travel Assistant. I can assist with journey planning, flight schedule lookups, baggage and cancellation policies, or live flight tracking. How can I assist your travels today?
+                                Hello. Welcome to ARMS 2.0 Intelligent Aviation & Travel Assistant. I can assist you with real flight schedules in our inventory, personalized trip itineraries across 40+ destinations, baggage rules, check-in information, and booking lookups. How can I assist your travels today?
                             </div>
                         </div>
                     </div>
                     <div class="chat-composer p-3">
                         <div class="mb-2" id="suggestion-chips">
                             <span class="text-muted small me-2">Suggested queries:</span>
-                            <button type="button" class="suggestion-chip">What is the baggage allowance?</button>
                             <button type="button" class="suggestion-chip">Flights from Chennai</button>
+                            <button type="button" class="suggestion-chip">Plan a 3-day trip to Paris</button>
+                            <button type="button" class="suggestion-chip">What is the baggage allowance?</button>
                             <button type="button" class="suggestion-chip">Cancellation policy</button>
+                            <button type="button" class="suggestion-chip">Plan a trip to Goa under ₹15,000</button>
+                            <button type="button" class="suggestion-chip">Tell me about Tokyo</button>
                             <button type="button" class="suggestion-chip">Airport check-in times</button>
-                            <button type="button" class="suggestion-chip">Plan a 3-day trip to Goa under ₹15,000</button>
                         </div>
                         <form id="chat-form">
                             {% csrf_token %}
@@ -177,6 +211,73 @@
         </div>
     </div>
 </div>
+
+<!-- AI Key & Engine Settings Modal -->
+<div class="modal fade" id="aiSettingsModal" tabindex="-1" aria-labelledby="aiSettingsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-dark rounded-0">
+            <div class="modal-header">
+                <h5 class="modal-title h6" id="aiSettingsModalLabel">
+                    <i class="fas fa-brain me-2 text-warning" aria-hidden="true"></i>AI Model & Open-Source Key Settings
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-3">
+                    Configure an open-source API key (OpenRouter, Groq, or Hugging Face) or cloud provider to unlock state-of-the-art conversational intelligence. When no external key is configured, ARMS uses its built-in database-grounded neural travel engine.
+                </p>
+
+                <div class="mb-3">
+                    <label for="ai-provider-select" class="form-label small text-light fw-bold">AI Provider</label>
+                    <select id="ai-provider-select" class="form-select form-select-dark rounded-0">
+                        <option value="openrouter">OpenRouter (Recommended: Free Open-Source Models)</option>
+                        <option value="groq">Groq (Ultra-Fast Open Weights: Llama 3.3)</option>
+                        <option value="huggingface">Hugging Face (Inference API)</option>
+                        <option value="openai">OpenAI (GPT-4o Mini)</option>
+                        <option value="auto">Auto-Detect from API Key Format</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="ai-model-select" class="form-label small text-light fw-bold">Model</label>
+                    <select id="ai-model-select" class="form-select form-select-dark rounded-0">
+                        <option value="meta-llama/llama-3.3-70b-instruct:free">Meta Llama 3.3 70B Instruct (Free on OpenRouter)</option>
+                        <option value="mistralai/mistral-7b-instruct:free">Mistral 7B Instruct (Free on OpenRouter)</option>
+                        <option value="google/gemini-2.0-flash-lite:free">Gemini 2.0 Flash Lite (Free on OpenRouter)</option>
+                        <option value="qwen/qwen-2.5-72b-instruct:free">Qwen 2.5 72B Instruct (Free on OpenRouter)</option>
+                        <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile (Groq)</option>
+                        <option value="gpt-4o-mini">GPT-4o Mini (OpenAI)</option>
+                        <option value="default">Provider Default Model</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="ai-api-key-input" class="form-label small text-light fw-bold">API Key / Token</label>
+                    <div class="input-group">
+                        <input type="password" id="ai-api-key-input" class="form-control rounded-0 form-control-dark" placeholder="sk-or-... / gsk_... / hf_... / sk-...">
+                        <button type="button" class="btn btn-outline-secondary rounded-0" id="toggle-key-visibility">
+                            <i class="fas fa-eye" id="toggle-key-icon" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <div class="form-text text-muted small mt-1">
+                        Keys are stored in your active session and never logged. Get a free key at <a href="https://openrouter.ai" target="_blank" rel="noopener" class="text-warning text-decoration-underline">openrouter.ai</a> or <a href="https://console.groq.com" target="_blank" rel="noopener" class="text-warning text-decoration-underline">console.groq.com</a>.
+                    </div>
+                </div>
+
+                <div id="ai-settings-alert" class="alert alert-info py-2 small d-none" role="alert"></div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-danger btn-sm rounded-0" id="btn-clear-ai-key">
+                    Clear Key & Use Neural Engine
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-0" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-gold btn-sm rounded-0" id="btn-save-ai-settings">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock pageContent %}
 
 {% block ScriptBlock %}
@@ -186,6 +287,16 @@
     const chatForm = document.getElementById('chat-form');
     const chatInput = document.getElementById('chat-message');
     const submitBtn = document.getElementById('chat-submit-btn');
+    const activeEngineBadge = document.getElementById('active-engine-badge');
+    const providerSelect = document.getElementById('ai-provider-select');
+    const modelSelect = document.getElementById('ai-model-select');
+    const apiKeyInput = document.getElementById('ai-api-key-input');
+    const btnSaveAiSettings = document.getElementById('btn-save-ai-settings');
+    const btnClearAiKey = document.getElementById('btn-clear-ai-key');
+    const aiSettingsAlert = document.getElementById('ai-settings-alert');
+    const toggleKeyBtn = document.getElementById('toggle-key-visibility');
+    const toggleKeyIcon = document.getElementById('toggle-key-icon');
+
     let currentLanguage = 'en';
 
     // Handle Language Selector
@@ -197,6 +308,111 @@
             addMessage('Language switched to ' + this.textContent + '.', false);
         });
     });
+
+    // Toggle API Key visibility
+    if (toggleKeyBtn) {
+        toggleKeyBtn.addEventListener('click', function() {
+            if (apiKeyInput.type === 'password') {
+                apiKeyInput.type = 'text';
+                toggleKeyIcon.className = 'fas fa-eye-slash';
+            } else {
+                apiKeyInput.type = 'password';
+                toggleKeyIcon.className = 'fas fa-eye';
+            }
+        });
+    }
+
+    // Fetch initial AI Engine Status
+    function checkAiStatus() {
+        $.ajax({
+            url: "{% url 'travel-chat-api' %}",
+            method: "POST",
+            data: {
+                action: 'get_ai_status',
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            dataType: 'json',
+            success: function(resp) {
+                if (resp && resp.status === 'success') {
+                    if (resp.has_key) {
+                        activeEngineBadge.textContent = 'Engine: ' + (resp.provider.toUpperCase()) + ' (' + resp.source + ')';
+                        activeEngineBadge.classList.add('connected');
+                        if (resp.provider) providerSelect.value = resp.provider;
+                        if (resp.model) modelSelect.value = resp.model;
+                    } else {
+                        activeEngineBadge.textContent = 'Engine: ARMS Neural Brain';
+                        activeEngineBadge.classList.remove('connected');
+                    }
+                }
+            }
+        });
+    }
+    checkAiStatus();
+
+    // Save AI Settings
+    if (btnSaveAiSettings) {
+        btnSaveAiSettings.addEventListener('click', function() {
+            const keyVal = apiKeyInput.value.trim();
+            const providerVal = providerSelect.value;
+            const modelVal = modelSelect.value;
+
+            btnSaveAiSettings.disabled = true;
+            btnSaveAiSettings.textContent = 'Saving...';
+
+            $.ajax({
+                url: "{% url 'travel-chat-api' %}",
+                method: "POST",
+                data: {
+                    action: 'save_ai_settings',
+                    api_key: keyVal,
+                    provider: providerVal,
+                    model: modelVal,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                dataType: 'json',
+                success: function(resp) {
+                    btnSaveAiSettings.disabled = false;
+                    btnSaveAiSettings.textContent = 'Save Settings';
+                    aiSettingsAlert.className = 'alert alert-success py-2 small';
+                    aiSettingsAlert.textContent = 'AI configuration successfully saved to active session.';
+                    aiSettingsAlert.classList.remove('d-none');
+                    checkAiStatus();
+                },
+                error: function() {
+                    btnSaveAiSettings.disabled = false;
+                    btnSaveAiSettings.textContent = 'Save Settings';
+                    aiSettingsAlert.className = 'alert alert-danger py-2 small';
+                    aiSettingsAlert.textContent = 'Unable to save settings. Please try again.';
+                    aiSettingsAlert.classList.remove('d-none');
+                }
+            });
+        });
+    }
+
+    // Clear AI Key
+    if (btnClearAiKey) {
+        btnClearAiKey.addEventListener('click', function() {
+            apiKeyInput.value = '';
+            $.ajax({
+                url: "{% url 'travel-chat-api' %}",
+                method: "POST",
+                data: {
+                    action: 'save_ai_settings',
+                    clear_key: '1',
+                    provider: 'auto',
+                    model: 'default',
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                dataType: 'json',
+                success: function() {
+                    aiSettingsAlert.className = 'alert alert-info py-2 small';
+                    aiSettingsAlert.textContent = 'Key removed. Switched back to built-in ARMS Neural Engine.';
+                    aiSettingsAlert.classList.remove('d-none');
+                    checkAiStatus();
+                }
+            });
+        });
+    }
 
     function formatMessageContent(content) {
         const div = document.createElement('div');
@@ -218,7 +434,6 @@
         const bubble = document.createElement('div');
         bubble.className = `chat-message rounded px-3 py-2 ${isUser ? 'user-message' : ''}`;
         bubble.style.maxWidth = '85%';
-        bubble.style.whiteSpace = 'pre-line';
 
         if (isUser) {
             bubble.textContent = content;
@@ -229,72 +444,79 @@
         wrapper.appendChild(bubble);
         chatWindow.appendChild(wrapper);
         chatWindow.scrollTop = chatWindow.scrollHeight;
-        return wrapper;
     }
 
-    function showLoading() {
+    function showLoadingIndicator() {
         const wrapper = document.createElement('div');
-        wrapper.className = 'd-flex mb-3 justify-content-start typing-indicator-wrapper';
-        wrapper.id = 'chat-loading-indicator';
-        wrapper.setAttribute('role', 'status');
+        wrapper.className = 'd-flex mb-3 justify-content-start';
+        wrapper.id = 'chat-loading-wrapper';
 
         const bubble = document.createElement('div');
-        bubble.className = 'chat-message rounded px-3 py-2';
-        bubble.innerHTML = '<span class="typing-loader"><i class="fas fa-spinner fa-spin me-2" aria-hidden="true"></i>Consulting flight inventory and travel intelligence...</span>';
+        bubble.className = 'chat-message rounded px-3 py-2 text-muted';
+        bubble.innerHTML = '<span class="typing-loader">ARMS Travel Assistant is thinking...</span>';
 
         wrapper.appendChild(bubble);
         chatWindow.appendChild(wrapper);
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 
-    function removeLoading() {
-        const indicator = document.getElementById('chat-loading-indicator');
-        if (indicator) indicator.remove();
+    function removeLoadingIndicator() {
+        const loader = document.getElementById('chat-loading-wrapper');
+        if (loader) {
+            loader.remove();
+        }
     }
 
-    function sendMessage(text) {
-        if (!text) return;
-        addMessage(text, true);
-        chatInput.value = '';
-        submitBtn.disabled = true;
-        showLoading();
-
-        fetch('{% url "travel-chat-api" %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: new URLSearchParams({
-                message: text,
-                language: currentLanguage
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            removeLoading();
-            submitBtn.disabled = false;
-            if (data.status === 'success') {
-                addMessage(data.response, false);
-            } else {
-                addMessage(data.message || 'Unable to process your request at this time.', false);
-            }
-        })
-        .catch(() => {
-            removeLoading();
-            submitBtn.disabled = false;
-            addMessage('Service temporarily unavailable. Please verify your connection or search the flight directory directly.', false);
-        });
-    }
-
-    chatForm.addEventListener('submit', function(event) {
-        event.preventDefault();
-        sendMessage(chatInput.value.trim());
-    });
-
+    // Suggestion chips handler
     document.querySelectorAll('.suggestion-chip').forEach(function(chip) {
         chip.addEventListener('click', function() {
-            sendMessage(this.textContent.trim());
+            chatInput.value = this.textContent.trim();
+            chatForm.dispatchEvent(new Event('submit'));
+        });
+    });
+
+    chatForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const userText = chatInput.value.trim();
+        if (!userText) return;
+
+        addMessage(userText, true);
+        chatInput.value = '';
+        submitBtn.disabled = true;
+        showLoadingIndicator();
+
+        $.ajax({
+            url: "{% url 'travel-chat-api' %}",
+            method: "POST",
+            data: {
+                message: userText,
+                language: currentLanguage,
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            dataType: 'json',
+            success: function(response) {
+                removeLoadingIndicator();
+                submitBtn.disabled = false;
+                if (response && response.response) {
+                    addMessage(response.response, false);
+                } else if (response && response.message) {
+                    addMessage(response.message, false);
+                } else {
+                    addMessage("No response received from the travel assistant. Please check your query or search our flight directory.", false);
+                }
+            },
+            error: function(xhr, status, error) {
+                removeLoadingIndicator();
+                submitBtn.disabled = false;
+                let errMsg = "An error occurred while contacting the travel assistant. Please try searching flight schedules directly.";
+                try {
+                    const parsed = JSON.parse(xhr.responseText);
+                    if (parsed.message) {
+                        errMsg = parsed.message;
+                    }
+                } catch(e) {}
+                addMessage(errMsg, false);
+            }
         });
     });
 })();
