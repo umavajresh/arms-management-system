@@ -1,11 +1,11 @@
 services:
   - type: web
-    name: django-arms-web
+    name: arms-2-0-web
     env: python
     rootDir: django_arms
     plan: starter
     region: oregon
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt && python manage.py collectstatic --noinput
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput
     startCommand: gunicorn django_arms.wsgi:application --bind 0.0.0.0:$PORT
     envVars:
       - key: SECRET_KEY

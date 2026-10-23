@@ -1508,6 +1508,7 @@ class MultilingualAndToolChatbotTests(TestCase):
         tokyo_resp = get_travel_response("Tell me about Tokyo")
         self.assertIn("Tokyo", tokyo_resp)
         self.assertIn("Shibuya", tokyo_resp)
+        self.assertNotIn("bookable flights", tokyo_resp.lower())
 
         paris_resp = get_travel_response("Trip to Paris")
         self.assertIn("Paris", paris_resp)

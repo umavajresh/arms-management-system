@@ -1523,7 +1523,7 @@ def get_travel_response(
         lines.append("")
         lines.append(format_flight_price_chart(matched_flights[0]))
     else:
-        lines.append("- No matching bookable flights were found. Try a different origin, destination, or date.")
+        lines.append("- No matching scheduled flight records were found in ARMS. Try a different origin, destination, or date.")
 
     lines.extend([
         "",
