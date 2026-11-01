@@ -838,8 +838,27 @@ class TravelChatbotTests(SimpleTestCase):
         self.assertIn("within the supplied budget", response)
         self.assertIn("Gandikota", response)
         self.assertIn("Belum Caves", response)
+        self.assertIn("Bangalore (BLR)", response)
+        self.assertIn("Regional gateway connectivity", response)
+        self.assertNotIn("No nearby hub or connecting ground route has been verified", response)
         self.assertNotIn("Singapore", response)
         self.assertNotIn("Istanbul", response)
+
+        sample_flight = [{
+            'id': 1,
+            'code': 'AI808',
+            'from': 'BLR - Kempegowda',
+            'to': 'MAA - Chennai',
+            'departure': '24 Oct 2026, 04:00 PM',
+            'economy_price': 2900.0,
+            'business_price': 9500.0,
+            'currency': 'INR',
+            'economy_available': 100,
+        }]
+        flight_response = get_travel_response("plan a trip to Kadapa under₹12000", flights=sample_flight)
+        self.assertIn("Price Allocation Chart for AI808", flight_response)
+        self.assertIn("Base Airfare", flight_response)
+        self.assertIn("Fuel Surcharge (YQ)", flight_response)
 
     def test_compute_price_breakdown_percentages(self):
         from armsApp.ai_chatbot import compute_price_breakdown

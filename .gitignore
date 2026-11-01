@@ -116,5 +116,8 @@ password.txt
 # Node modules (if any front-end tooling used)
 node_modules/
 
+# Agent / scratch workspaces
+Antigravity/
+
 # Zip output (ignore if you plan to keep the zip in repo root, but we will create it on Desktop)
 *.zip

@@ -1595,6 +1595,8 @@ def travel_chat_api(request):
     if action == 'clear_chat':
         request.session.pop('ai_chat_history', None)
         request.session.pop('ai_travel_preferences', None)
+        request.session.pop('ai_last_flights', None)
+        request.session.modified = True
         return JsonResponse({'status': 'success', 'message': 'Conversation cleared.'})
 
     if _ai_chat_rate_limited(request):
@@ -1727,6 +1729,9 @@ def travel_chat_api(request):
         history.append({'role': 'user', 'content': message[:300]})
         history.append({'role': 'assistant', 'content': response[:600]})
         request.session['ai_chat_history'] = history[-10:]
+    if flights:
+        request.session['ai_last_flights'] = [f['code'] for f in flights[:5]]
+    request.session.modified = True
 
     # ---------------------------------------------------------
     # 7. Build response

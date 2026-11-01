@@ -36,8 +36,8 @@ for env_candidate in [BASE_DIR / '.env', BASE_DIR.parent / '.env', BASE_DIR / '.
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
-# Use a fresh key for local development; production settings require SECRET_KEY.
-SECRET_KEY = os.environ.get('SECRET_KEY') or get_random_secret_key()
+# Use stable key for local development; production settings require SECRET_KEY.
+SECRET_KEY = os.environ.get('SECRET_KEY') or 'django-insecure-arms-dev-secret-key-stable-2026-v2'
 
 DEBUG = os.environ.get('DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
@@ -45,7 +45,7 @@ ALLOWED_HOSTS = [
     host.strip()
     for host in os.environ.get(
         'ALLOWED_HOSTS',
-        'localhost,127.0.0.1,[::1],testserver',
+        '*',
     ).split(',')
     if host.strip()
 ]

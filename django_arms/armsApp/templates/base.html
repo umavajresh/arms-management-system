@@ -112,6 +112,79 @@
             color: #ffffff !important;
         }
 
+        /* High-Contrast Accessible Tables & DataViews */
+        table,
+        .table {
+            --bs-table-bg: transparent !important;
+            --bs-table-color: #e2e8f0 !important;
+            --bs-table-hover-bg: rgba(38, 51, 69, 0.45) !important;
+            --bs-table-hover-color: #ffffff !important;
+            --bs-table-striped-bg: rgba(24, 34, 48, 0.5) !important;
+            --bs-table-striped-color: #e2e8f0 !important;
+            --bs-table-border-color: #263345 !important;
+            color: #e2e8f0 !important;
+            background-color: transparent !important;
+            border-color: #263345 !important;
+        }
+
+        table th,
+        .table th,
+        .table thead th {
+            background-color: var(--arms-card, #182230) !important;
+            color: #ffffff !important;
+            border-color: #263345 !important;
+            border-bottom: 2px solid #263345 !important;
+            font-weight: 600 !important;
+        }
+
+        table td,
+        .table td,
+        .table tbody td {
+            color: #e2e8f0 !important;
+            border-color: #263345 !important;
+            background-color: transparent;
+        }
+
+        .table-striped > tbody > tr:nth-of-type(odd) > * {
+            background-color: rgba(24, 34, 48, 0.5) !important;
+            color: #e2e8f0 !important;
+        }
+
+        .table-hover > tbody > tr:hover > * {
+            background-color: rgba(38, 51, 69, 0.45) !important;
+            color: #ffffff !important;
+        }
+
+        /* Prevent rogue light backgrounds from washing out text */
+        .bg-light {
+            background-color: var(--arms-card, #182230) !important;
+            color: #f8fafc !important;
+        }
+
+        .bg-white {
+            background-color: var(--arms-surface, #131924) !important;
+            color: #f8fafc !important;
+        }
+
+        /* DataTables Dark Support */
+        .dataTables_wrapper {
+            color: #e2e8f0 !important;
+        }
+        .dataTables_wrapper .dataTables_length,
+        .dataTables_wrapper .dataTables_filter,
+        .dataTables_wrapper .dataTables_info,
+        .dataTables_wrapper .dataTables_paginate {
+            color: #94a3b8 !important;
+        }
+        .dataTables_wrapper .dataTables_filter input,
+        .dataTables_wrapper .dataTables_length select {
+            background-color: #0b0f17 !important;
+            border: 1px solid #263345 !important;
+            color: #f8fafc !important;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
         .alert-warning {
             background-color: rgba(197, 168, 128, 0.16) !important;
             border: 1px solid rgba(197, 168, 128, 0.4) !important;

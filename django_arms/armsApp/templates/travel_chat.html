@@ -30,6 +30,39 @@
         white-space: pre-line;
     }
 
+    .chat-message table {
+        white-space: normal;
+    }
+
+    .chat-table {
+        margin: 10px 0;
+        border: 1px solid var(--arms-border, #263345) !important;
+        border-collapse: collapse;
+        width: 100%;
+        color: #e2e8f0 !important;
+    }
+
+    .chat-table th {
+        background-color: var(--arms-card, #182230) !important;
+        color: #ffffff !important;
+        border: 1px solid var(--arms-border, #263345) !important;
+        padding: 6px 12px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .chat-table td {
+        border: 1px solid var(--arms-border, #263345) !important;
+        padding: 6px 12px;
+        color: #e2e8f0 !important;
+        background-color: rgba(11, 15, 23, 0.5) !important;
+        font-size: 0.85rem;
+    }
+
+    .chat-table tr:hover td {
+        background-color: rgba(38, 51, 69, 0.45) !important;
+    }
+
     .chat-message.user-message {
         color: #0b0f17;
         background: var(--arms-gold, #c5a880);
@@ -449,16 +482,81 @@
     }
 
     function formatMessageContent(content) {
-        const div = document.createElement('div');
-        div.textContent = content;
-        let escaped = div.innerHTML;
+        if (!content) return '';
+        const lines = content.split('\n');
+        const output = [];
+        let inTable = false;
+        let tableHeaderDone = false;
+        let tableRows = [];
 
-        // Convert markdown links [Label](/url) safely to internal links
-        escaped = escaped.replace(/\[([^\]]+)\]\(((\/[a-zA-Z0-9_\-\/?=&]+))\)/g, function(match, label, url) {
-            return '<a href="' + url + '" class="chat-link" target="_self">' + label + ' &rarr;</a>';
-        });
+        function flushTable() {
+            if (!inTable) return;
+            let html = '<div class="table-responsive my-2"><table class="chat-table table table-sm table-bordered"><tbody>';
+            tableRows.forEach(function(row, idx) {
+                const rawParts = row.split('|');
+                const cells = [];
+                for (let i = 1; i < rawParts.length - 1; i++) {
+                    cells.push(rawParts[i].trim());
+                }
+                if (cells.length > 0) {
+                    const isSeparator = cells.every(function(c) { return /^:?-+:?$/.test(c); });
+                    if (isSeparator) {
+                        tableHeaderDone = true;
+                        return;
+                    }
+                    html += '<tr>';
+                    cells.forEach(function(cell) {
+                        const tag = (!tableHeaderDone && idx === 0) ? 'th' : 'td';
+                        html += '<' + tag + '>' + formatInline(cell) + '</' + tag + '>';
+                    });
+                    html += '</tr>';
+                }
+            });
+            html += '</tbody></table></div>';
+            output.push(html);
+            inTable = false;
+            tableHeaderDone = false;
+            tableRows = [];
+        }
 
-        return escaped;
+        function formatInline(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            let escaped = div.innerHTML;
+
+            // Markdown bold **text**
+            escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+            // Convert markdown links [Label](url) safely to internal/external links
+            escaped = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, label, url) {
+                const cleanUrl = url.trim();
+                if (cleanUrl.startsWith('/') || cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+                    return '<a href="' + cleanUrl + '" class="chat-link" target="_self">' + label + ' &rarr;</a>';
+                }
+                return label;
+            });
+
+            return escaped;
+        }
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+            if (trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.length > 2) {
+                inTable = true;
+                tableRows.push(trimmed);
+            } else {
+                if (inTable) {
+                    flushTable();
+                }
+                output.push(formatInline(line));
+            }
+        }
+        if (inTable) {
+            flushTable();
+        }
+
+        return output.join('\n');
     }
 
     function addMessage(content, isUser = false) {

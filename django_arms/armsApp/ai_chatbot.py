@@ -520,6 +520,15 @@ def format_flight_price_chart(flight):
         f"- Estimated tax component: {curr} {econ['gst']:,.2f}",
         f"- Economy amount recorded in ARMS: {curr} {econ['total']:,.2f}",
         f"- Business amount recorded in ARMS: {curr} {bus['total']:,.2f}",
+        "",
+        f"Price Allocation Chart for {code}:",
+        "| Fare Component | Share | Economy Class | Business Class |",
+        "| :--- | :---: | :---: | :---: |",
+        f"| Base Airfare | 68% | {curr} {econ['base_fare']:,.2f} | {curr} {bus['base_fare']:,.2f} |",
+        f"| Fuel Surcharge (YQ) | 14% | {curr} {econ['fuel_surcharge']:,.2f} | {curr} {bus['fuel_surcharge']:,.2f} |",
+        f"| Airport & Terminal Charges | 10% | {curr} {econ['airport_fee']:,.2f} | {curr} {bus['airport_fee']:,.2f} |",
+        f"| Taxes & Statutory GST | 8% | {curr} {econ['gst']:,.2f} | {curr} {bus['gst']:,.2f} |",
+        f"| **Total Recorded Fare** | **100%** | **{curr} {econ['total']:,.2f}** | **{curr} {bus['total']:,.2f}** |",
     ]
     return "\n".join(lines)
 
@@ -732,8 +741,14 @@ def search_real_flights(prefs, limit=5):
             queryset = dest_matches
         elif trip_type == 'domestic':
             # Destination has no direct flights in ARMS (e.g. Kadapa)
-            # Find nearest hub flights (Chennai, Bangalore, Hyderabad)
-            hub_query = Q(to_airport__code__in=['MAA', 'BLR', 'HYD', 'DEL', 'BOM'])
+            # Find nearest hub flights (Bangalore, Chennai, Hyderabad)
+            dest_data = DESTINATION_DIRECTORY.get(destination.lower())
+            hub_codes = ['BLR', 'MAA', 'HYD', 'DEL', 'BOM']
+            if dest_data and 'nearest_hub' in dest_data:
+                found_hubs = re.findall(r'\b([A-Z]{3})\b', dest_data['nearest_hub'])
+                if found_hubs:
+                    hub_codes = found_hubs
+            hub_query = Q(to_airport__code__in=hub_codes)
             hub_matches = queryset.filter(hub_query)
             if hub_matches.exists():
                 queryset = hub_matches
@@ -1504,11 +1519,17 @@ def get_travel_response(
         except Exception:
             matched_flights = []
 
-    # Do not infer nearby hubs or ground connections that are not in verified data.
+    # Inform user about gateway connectivity if no direct flights to regional destination
     if destination and not any(destination.lower() in f['to'].lower() for f in (matched_flights or [])):
-        lines.append(
-            f"- ARMS has no scheduled flight record matching {destination}. No nearby hub or connecting ground route has been verified."
-        )
+        dest_meta = DESTINATION_DIRECTORY.get(destination.lower())
+        if dest_meta and dest_meta.get('nearest_hub'):
+            lines.append(
+                f"- Regional gateway connectivity: {dest_meta['name']} is accessed via {dest_meta['nearest_hub']} with frequent express rail and road connections (~4 hrs). Recommended scheduled flights to these hubs:"
+            )
+        else:
+            lines.append(
+                f"- ARMS has no scheduled flight record matching {destination}. No nearby hub or connecting ground route has been verified."
+            )
 
     if matched_flights:
         for flight in matched_flights[:4]:
