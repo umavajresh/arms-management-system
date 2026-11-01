@@ -29,6 +29,12 @@ if database_url:
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.onrender.com',
+    'https://arms-2-0-web.onrender.com',
+    'http://localhost:8001',
+    'http://127.0.0.1:8001',
+]
 SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False').lower() in ('1', 'true', 'yes')
 SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '0'))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = (
