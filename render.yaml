@@ -1,7 +1,7 @@
 services:
   - type: web
     name: arms-2-0-web
-    env: python
+    runtime: python
     rootDir: django_arms
     plan: free
     region: oregon
@@ -16,9 +16,3 @@ services:
         value: "False"
       - key: ALLOWED_HOSTS
         value: "*"
-      - key: DATABASE_URL
-        fromDatabase: false
-        sync: false
-    gitHub:
-      repo: umavajresh/arms-management-system
-      branch: deployment/arms-safe-launch
