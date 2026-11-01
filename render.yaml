@@ -3,14 +3,15 @@ services:
     name: arms-2-0-web
     env: python
     rootDir: django_arms
-    plan: starter
+    plan: free
     region: oregon
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt && python manage.py migrate && python manage.py import_data && python manage.py collectstatic --noinput
     startCommand: gunicorn django_arms.wsgi:application --bind 0.0.0.0:$PORT
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
       - key: SECRET_KEY
-        fromDatabase: false
-        sync: false
+        generateValue: true
       - key: DEBUG
         value: "False"
       - key: ALLOWED_HOSTS
@@ -20,4 +21,4 @@ services:
         sync: false
     gitHub:
       repo: umavajresh/arms-management-system
-      branch: main
+      branch: deployment/arms-safe-launch
